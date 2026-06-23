@@ -349,6 +349,31 @@
       </div>
     </section>
 
+    <!-- NEWSLETTER -->
+    <section class="card dark" id="newsletter" aria-labelledby="news-h">
+      <span class="label">Weekly newsletter</span>
+      <h2 id="news-h">Get the weekly drop</h2>
+      <p class="kick">One short email a week — automation plays, time-saving tricks, and the occasional banana. No fluff, unsubscribe anytime.</p>
+
+      <form id="news-form" novalidate>
+        <div class="field">
+          <label for="news-email">Email</label>
+          <input id="news-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="jordan@riverasitework.com" required />
+        </div>
+        <button class="btn btn-primary" type="submit" id="news-btn">
+          🍌 Sign me up
+        </button>
+        <p class="form-note">No spam. One useful email a week.</p>
+        <p class="err-msg" id="news-err">Something went sideways. Mind trying again?</p>
+      </form>
+
+      <div class="success" id="news-success" role="status" aria-live="polite">
+        <div class="check">✓</div>
+        <h3>You're on the list</h3>
+        <p>See you in your inbox. 🍌</p>
+      </div>
+    </section>
+
     <!-- LINKS -->
     <section class="card dark" aria-label="More from Takeoff Monkey">
       <span class="label">Keep exploring</span>
@@ -377,6 +402,7 @@
     /* ====== EDIT THESE THREE ====== */
     const CALENDLY_URL   = "https://calendly.com/d/dz3k-79z-8p2/takeoff-monkey-consultation"; // <- your Calendly link
     const WEBHOOK_URL    = "https://takeoffmonkey.app.n8n.cloud/webhook/letsgo-guide"; // <- your n8n Production webhook
+    const NEWSLETTER_URL = "https://takeoffmonkey.app.n8n.cloud/webhook/newsletter-signup"; // <- weekly newsletter signup
     /* ============================== */
   </script>
 
@@ -486,6 +512,55 @@
         errEl.classList.add('show');
       }
     });
+
+    // ---- Newsletter form -> n8n webhook ----
+    var newsForm = document.getElementById('news-form');
+    if (newsForm){
+      var newsBtn = document.getElementById('news-btn');
+      var newsErr = document.getElementById('news-err');
+      newsForm.addEventListener('submit', async function(e){
+        e.preventDefault();
+        newsErr.classList.remove('show');
+
+        var nEmail = newsForm.email.value.trim();
+        if (!validEmail(nEmail)){
+          newsErr.textContent = 'Please enter a valid email.';
+          newsErr.classList.add('show');
+          return;
+        }
+
+        newsBtn.disabled = true;
+        var nOriginal = newsBtn.innerHTML;
+        newsBtn.innerHTML = 'Signing up…';
+
+        var nu = getUTMs();
+        var nPayload = {
+          email: nEmail,
+          list: 'weekly-newsletter',
+          source: 'letsgo.takeo.co',
+          submitted_at: new Date().toISOString(),
+          utm_source: nu.utm_source || '',
+          utm_medium: nu.utm_medium || '',
+          referrer: document.referrer || ''
+        };
+
+        try{
+          var nRes = await fetch(NEWSLETTER_URL, {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify(nPayload)
+          });
+          if (!nRes.ok) throw new Error('Bad status ' + nRes.status);
+          newsForm.style.display = 'none';
+          document.getElementById('news-success').classList.add('show');
+        }catch(err){
+          newsBtn.disabled = false;
+          newsBtn.innerHTML = nOriginal;
+          newsErr.textContent = 'Something went sideways. Mind trying again?';
+          newsErr.classList.add('show');
+        }
+      });
+    }
   </script>
 </body>
 </html>
