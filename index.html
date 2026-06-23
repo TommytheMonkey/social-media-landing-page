@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Takeoff Monkey — Free Automation Field Guide & Strategy Call</title>
+<meta name="description" content="Real automation tips for contractors. Grab our free Field Guide to Automation and book a no-pressure strategy call with the Takeoff Monkey team." />
+
+<!-- Open Graph / social preview -->
+<meta property="og:title" content="The Contractor's Field Guide to Automation — free from Takeoff Monkey" />
+<meta property="og:description" content="How small construction & estimating teams save time, kill errors, and lock in their best processes. Free guide + book a call." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://letsgo.takeoffmonkey.com" />
+
+<!-- ========================================================= -->
+<!--  CONFIG — EDIT THESE 3 VALUES, THEN DEPLOY                 -->
+<!--  (they're also referenced in the <script> at the bottom)  -->
+<!-- ========================================================= -->
+<!--
+   1. CALENDLY_URL    -> your booking link (e.g. https://calendly.com/tommy-tom/30min)
+   2. WEBHOOK_URL      -> your n8n Production webhook URL
+   3. CONTENT_HUB_URL  -> link for the "More tips" button (your blog / LinkedIn / YouTube)
+   Find them in the <script id="config"> block near the bottom.
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+<style>
+  :root{
+    --jungle:#00391F;
+    --jungle-deep:#002414;
+    --jungle-line:#0c4a2c;
+    --banana:#F5ED60;
+    --banana-deep:#e4dc44;
+    --concrete:#F1F2F2;
+    --black:#231F20;
+    --white:#ffffff;
+    --maxw:600px;
+    --radius:14px;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Montserrat',system-ui,sans-serif;
+    background:var(--jungle);
+    color:var(--white);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  a{color:inherit}
+
+  .wrap{
+    max-width:var(--maxw);
+    margin:0 auto;
+    padding:0 22px;
+    position:relative;
+    z-index:2;
+  }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;
+    padding:46px 0 40px;
+    overflow:hidden;
+    background:
+      radial-gradient(120% 80% at 50% -10%, #064d2c 0%, var(--jungle) 55%, var(--jungle-deep) 100%);
+  }
+  /* signature: banana spiral bleeding off the corner, echoing the guide cover */
+  .spiral{
+    position:absolute;
+    right:-130px;
+    bottom:-150px;
+    width:420px;
+    height:420px;
+    opacity:.16;
+    z-index:0;
+    pointer-events:none;
+    animation:spin 90s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.spiral{animation:none}}
+
+  .topbar{
+    display:flex;align-items:center;justify-content:center;
+    margin-bottom:30px;
+  }
+  .topbar img{height:74px;width:auto;display:block}
+
+
+
+  .eyebrow{
+    text-align:center;
+    font-weight:700;
+    font-size:12px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--banana);
+    margin-bottom:16px;
+  }
+  h1{
+    text-align:center;
+    font-weight:800;
+    font-size:clamp(31px,8.4vw,46px);
+    line-height:1.04;
+    letter-spacing:-.01em;
+    text-transform:uppercase;
+  }
+  h1 .pop{
+    color:var(--jungle);
+    background:var(--banana);
+    padding:0 .12em;
+    box-decoration-break:clone;
+    -webkit-box-decoration-break:clone;
+  }
+  .sub{
+    text-align:center;
+    font-size:clamp(15px,4vw,17px);
+    color:#cfe3d6;
+    max-width:430px;
+    margin:18px auto 0;
+    font-weight:500;
+  }
+
+  /* ---------- CARDS / SECTIONS ---------- */
+  .stack{padding:30px 0 56px}
+  .card{
+    background:var(--concrete);
+    color:var(--black);
+    border-radius:var(--radius);
+    padding:24px 22px;
+    margin-top:18px;
+    box-shadow:0 10px 30px rgba(0,0,0,.22);
+  }
+  .card.dark{
+    background:var(--jungle-deep);
+    color:var(--white);
+    border:1px solid var(--jungle-line);
+    box-shadow:none;
+  }
+
+  .label{
+    display:inline-flex;align-items:center;gap:8px;
+    font-weight:800;
+    font-size:11px;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--jungle);
+    background:var(--banana);
+    padding:5px 10px;
+    border-radius:6px;
+    margin-bottom:14px;
+  }
+  .card.dark .label{color:var(--jungle-deep)}
+
+  .card h2{
+    font-weight:800;
+    font-size:22px;
+    letter-spacing:-.01em;
+    margin-bottom:6px;
+    text-transform:uppercase;
+  }
+  .card p.kick{font-size:14.5px;color:#41524a;font-weight:500}
+  .card.dark p.kick{color:#bcd2c4}
+
+  /* ---------- GUIDE / LEAD FORM ---------- */
+  .guide-head{display:flex;gap:16px;align-items:flex-start}
+  .guide-thumb{
+    flex:0 0 84px;width:84px;height:108px;border-radius:8px;
+    background:var(--jungle);
+    display:flex;align-items:center;justify-content:center;
+    overflow:hidden;border:1px solid var(--jungle-line);
+  }
+  .guide-thumb img{width:100%;height:100%;object-fit:cover}
+
+  form{margin-top:20px;display:grid;gap:12px}
+  .field label{
+    display:block;font-size:12px;font-weight:700;
+    text-transform:uppercase;letter-spacing:.06em;
+    margin-bottom:6px;color:#cde0d4;
+  }
+  .field input{
+    width:100%;
+    font-family:inherit;font-size:16px;font-weight:500;
+    padding:13px 14px;
+    border-radius:10px;
+    border:1.5px solid var(--jungle-line);
+    background:#06311c;
+    color:var(--white);
+    transition:border-color .15s,box-shadow .15s;
+  }
+  .field input::placeholder{color:#6f8b7c}
+  .field input:focus{
+    outline:none;
+    border-color:var(--banana);
+    box-shadow:0 0 0 3px rgba(245,237,96,.25);
+  }
+
+  .btn{
+    font-family:inherit;font-weight:800;font-size:16px;
+    text-transform:uppercase;letter-spacing:.04em;
+    border:none;border-radius:10px;cursor:pointer;
+    padding:15px 18px;
+    width:100%;
+    display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    transition:transform .08s ease, background .15s ease, filter .15s ease;
+  }
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--banana);color:var(--jungle)}
+  .btn-primary:hover{filter:brightness(1.04)}
+  .btn-primary:disabled{opacity:.6;cursor:default}
+  .btn-ghost{
+    background:transparent;color:var(--white);
+    border:1.5px solid var(--jungle-line);
+  }
+  .btn-ghost:hover{border-color:var(--banana);color:var(--banana)}
+
+  .form-note{font-size:12px;color:#8aa597;text-align:center;margin-top:2px}
+
+  /* success state */
+  .success{display:none;text-align:center;padding:8px 0 4px}
+  .success.show{display:block;animation:fade .4s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .success .check{
+    width:56px;height:56px;border-radius:50%;
+    background:var(--banana);color:var(--jungle);
+    display:flex;align-items:center;justify-content:center;
+    font-size:28px;font-weight:800;margin:0 auto 14px;
+  }
+  .success h3{font-size:20px;font-weight:800;text-transform:uppercase;margin-bottom:6px}
+  .success p{font-size:14.5px;color:#cde0d4}
+  .err-msg{display:none;color:#ffb4a8;font-size:13px;text-align:center;margin-top:4px;font-weight:600}
+  .err-msg.show{display:block}
+
+  /* ---------- CALENDLY ---------- */
+  .cal-embed{
+    margin-top:18px;border-radius:12px;overflow:hidden;
+    min-height:680px;background:var(--white);
+  }
+  .calendly-inline-widget{min-width:280px;height:680px}
+
+  /* ---------- LINKS ROW ---------- */
+  .links{display:grid;gap:12px;margin-top:18px}
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    text-align:center;padding:34px 0 46px;
+    border-top:1px solid var(--jungle-line);
+  }
+  footer img{height:46px;opacity:.85;margin-bottom:14px}
+  footer p{font-size:12px;color:#7c9888;line-height:1.7}
+  footer a{color:var(--banana);text-decoration:underline;text-underline-offset:2px}
+
+  /* tighten on the smallest phones */
+  @media (max-width:360px){
+    .topbar img{height:62px}
+    .guide-head{flex-direction:column}
+    .guide-thumb{width:96px;height:124px}
+  }
+</style>
+</head>
+<body>
+
+  <!-- ===================== HERO ===================== -->
+  <header class="hero">
+    <!-- banana spiral signature -->
+    <svg class="spiral" viewBox="0 0 200 200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <path fill="none" stroke="#F5ED60" stroke-width="9" stroke-linecap="round"
+        d="M100 100
+           m0 0
+           a8 8 0 1 1 8 8
+           a20 20 0 1 1 -20 -20
+           a34 34 0 1 1 34 34
+           a48 48 0 1 1 -48 -48
+           a62 62 0 1 1 62 62
+           a76 76 0 1 1 -76 -76
+           a90 90 0 1 1 90 90" />
+    </svg>
+
+    <div class="wrap">
+      <div class="topbar">
+        <img src="assets/tkm_white.png" alt="Takeoff Monkey" />
+      </div>
+
+      <p class="eyebrow">Automation tips for contractors</p>
+      <h1>Stop doing work a <span class="pop">monkey</span> could be doing.</h1>
+      <p class="sub">Grab our free field guide, then book a no-pressure call to figure out what to automate first. Built by an estimating shop that actually runs on this stuff.</p>
+    </div>
+  </header>
+
+  <!-- ===================== CONTENT ===================== -->
+  <main class="wrap stack">
+
+    <!-- GUIDE + FORM -->
+    <section class="card dark" id="guide" aria-labelledby="guide-h">
+      <span class="label">Free · No fluff</span>
+      <div class="guide-head">
+        <div class="guide-thumb">
+          <img src="assets/guide_cover.png" alt="The Contractor's Field Guide to Automation cover"
+               onerror="this.style.display='none'" />
+        </div>
+        <div>
+          <h2 id="guide-h">The Contractor's Field&nbsp;Guide to Automation</h2>
+          <p class="kick">19 pages on saving time, killing errors, and locking in your best processes — with the exact tools we use every day. Drop your info and it lands in your inbox.</p>
+        </div>
+      </div>
+
+      <form id="lead-form" novalidate>
+        <div class="field">
+          <label for="name">Name</label>
+          <input id="name" name="name" type="text" autocomplete="name" placeholder="Jordan Rivera" required />
+        </div>
+        <div class="field">
+          <label for="company">Company</label>
+          <input id="company" name="company" type="text" autocomplete="organization" placeholder="Rivera Sitework" required />
+        </div>
+        <div class="field">
+          <label for="email">Email</label>
+          <input id="email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="jordan@riverasitework.com" required />
+        </div>
+        <button class="btn btn-primary" type="submit" id="submit-btn">
+          🍌 Send me the guide
+        </button>
+        <p class="form-note">No spam. Just the guide and the occasional useful tip.</p>
+        <p class="err-msg" id="err-msg">Something went sideways. Mind trying again?</p>
+      </form>
+
+      <div class="success" id="success" role="status" aria-live="polite">
+        <div class="check">✓</div>
+        <h3>Check your inbox</h3>
+        <p>The guide is on its way. If it's hiding, peek in spam or promotions.</p>
+      </div>
+    </section>
+
+    <!-- BOOK A CALL -->
+    <section class="card" id="book" aria-labelledby="book-h">
+      <span class="label">30 minutes</span>
+      <h2 id="book-h" style="color:var(--jungle)">Book a strategy call</h2>
+      <p class="kick">Tell us where your time goes and we'll tell you, honestly, what's worth automating and what isn't. No pitch, no obligation.</p>
+      <div class="cal-embed">
+        <!-- Calendly inline widget injects here once CALENDLY_URL is set -->
+        <div class="calendly-inline-widget" id="calendly-embed" data-auto-load="false"></div>
+        <noscript style="display:block;padding:20px;color:#231F20">
+          Enable JavaScript to book inline, or email sales@takeoffmonkey.com.
+        </noscript>
+      </div>
+    </section>
+
+    <!-- LINKS -->
+    <section class="card dark" aria-label="More from Takeoff Monkey">
+      <span class="label">Keep exploring</span>
+      <div class="links">
+        <a class="btn btn-ghost" id="link-main" href="https://www.takeoffmonkey.com" target="_blank" rel="noopener">
+          See what Takeoff Monkey does →
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer>
+    <div class="wrap">
+      <img src="assets/tkm_white.png" alt="Takeoff Monkey" />
+      <p>
+        © <span id="yr"></span> Takeoff Monkey LLC · Davidson, NC<br/>
+        <a href="mailto:sales@takeoffmonkey.com">sales@takeoffmonkey.com</a>
+      </p>
+    </div>
+  </footer>
+
+  <!-- ===================== CONFIG ===================== -->
+  <script id="config">
+    /* ====== EDIT THESE THREE ====== */
+    const CALENDLY_URL   = "https://calendly.com/d/dz3k-79z-8p2/takeoff-monkey-consultation"; // <- your Calendly link
+    const WEBHOOK_URL    = "https://takeoffmonkey.app.n8n.cloud/webhook/letsgo-guide"; // <- your n8n Production webhook
+    /* ============================== */
+  </script>
+
+  <!-- Calendly assets -->
+  <link rel="stylesheet" href="https://assets.calendly.com/assets/external/widget.css" />
+  <script src="https://assets.calendly.com/assets/external/widget.js" async></script>
+
+  <script>
+    document.getElementById('yr').textContent = new Date().getFullYear();
+
+    // ---- Calendly inline embed (loads once the script + config are ready) ----
+    function initCalendly(tries){
+      tries = tries || 0;
+      var ready = window.Calendly && typeof Calendly.initInlineWidget === 'function';
+      var configured = CALENDLY_URL && !/YOUR-HANDLE/.test(CALENDLY_URL);
+      if (!configured){
+        document.getElementById('calendly-embed').innerHTML =
+          '<div style="padding:24px;color:#231F20;font-weight:600">Add your Calendly link in the config block to enable inline booking.</div>';
+        return;
+      }
+      if (ready){
+        var sep = CALENDLY_URL.indexOf('?') === -1 ? '?' : '&';
+        Calendly.initInlineWidget({
+          url: CALENDLY_URL + sep + 'hide_gdpr_banner=1&background_color=ffffff&primary_color=00391f',
+          parentElement: document.getElementById('calendly-embed')
+        });
+      } else if (tries < 40){
+        setTimeout(function(){ initCalendly(tries+1); }, 150);
+      }
+    }
+    window.addEventListener('load', function(){ initCalendly(0); });
+
+    // ---- Lead form -> n8n webhook ----
+    var form = document.getElementById('lead-form');
+    var btn  = document.getElementById('submit-btn');
+    var errEl = document.getElementById('err-msg');
+
+    function validEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+    // ---- Capture traffic source (UTM params) once per session ----
+    // Tag the links you post, e.g. ?utm_source=linkedin&utm_medium=post
+    // (utm_source = linkedin|instagram, utm_medium = profile|post)
+    function captureUTMs(){
+      try {
+        var qs = new URLSearchParams(window.location.search);
+        var keys = ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'];
+        var found = {}, any = false;
+        keys.forEach(function(k){ var v = qs.get(k); if (v){ found[k] = v; any = true; } });
+        if (any) sessionStorage.setItem('tm_utms', JSON.stringify(found));
+      } catch(e){}
+    }
+    function getUTMs(){
+      try { return JSON.parse(sessionStorage.getItem('tm_utms') || '{}'); } catch(e){ return {}; }
+    }
+    captureUTMs();
+
+    form.addEventListener('submit', async function(e){
+      e.preventDefault();
+      errEl.classList.remove('show');
+
+      var name = form.name.value.trim();
+      var company = form.company.value.trim();
+      var email = form.email.value.trim();
+
+      if (!name || !company || !validEmail(email)){
+        errEl.textContent = 'Please fill in all three fields with a valid email.';
+        errEl.classList.add('show');
+        return;
+      }
+
+      if (/^https:\/\/YOUR/.test(WEBHOOK_URL)){
+        errEl.textContent = 'Webhook not configured yet — add WEBHOOK_URL in the config block.';
+        errEl.classList.add('show');
+        return;
+      }
+
+      btn.disabled = true;
+      var original = btn.innerHTML;
+      btn.innerHTML = 'Sending…';
+
+      var utms = getUTMs();
+      var payload = {
+        name: name,
+        company: company,
+        email: email,
+        source: 'letsgo.takeoffmonkey.com',
+        submitted_at: new Date().toISOString(),
+        utm_source: utms.utm_source || '',
+        utm_medium: utms.utm_medium || '',
+        utm_campaign: utms.utm_campaign || '',
+        referrer: document.referrer || ''
+      };
+
+      try{
+        var res = await fetch(WEBHOOK_URL, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Bad status ' + res.status);
+        form.style.display = 'none';
+        document.getElementById('success').classList.add('show');
+      }catch(err){
+        btn.disabled = false;
+        btn.innerHTML = original;
+        errEl.textContent = 'Something went sideways. Mind trying again?';
+        errEl.classList.add('show');
+      }
+    });
+  </script>
+</body>
+</html>
