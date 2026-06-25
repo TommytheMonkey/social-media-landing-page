@@ -29,22 +29,30 @@ export async function complete(system: string, user: string): Promise<string> {
 }
 
 /**
- * Run a completion expected to return a single JSON object and parse it.
- * Tolerates ```json fences and leading/trailing prose by extracting the first
- * balanced {...} block.
+ * Get a schema-valid structured object from the model using tool-use. Forcing a
+ * tool call makes the API return well-formed JSON matching `schema` — far more
+ * robust than parsing free-text JSON (which breaks on unescaped newlines/quotes).
  */
-export async function completeJSON<T>(system: string, user: string): Promise<T> {
-  const raw = await complete(system, user);
-  return parseJsonObject<T>(raw);
-}
-
-function parseJsonObject<T>(raw: string): T {
-  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidate = fenced ? fenced[1]! : raw;
-  const start = candidate.indexOf('{');
-  const end = candidate.lastIndexOf('}');
-  if (start === -1 || end === -1 || end < start) {
-    throw new Error(`Model did not return JSON: ${raw.slice(0, 300)}`);
-  }
-  return JSON.parse(candidate.slice(start, end + 1)) as T;
+export async function completeJSON<T>(
+  system: string,
+  user: string,
+  schema: Record<string, unknown>,
+): Promise<T> {
+  const msg = await anthropic().messages.create({
+    model: MODEL,
+    max_tokens: MAX_TOKENS,
+    system,
+    messages: [{ role: 'user', content: user }],
+    tools: [
+      {
+        name: 'submit_result',
+        description: 'Return the structured result for this request.',
+        input_schema: schema as Anthropic.Tool.InputSchema,
+      },
+    ],
+    tool_choice: { type: 'tool', name: 'submit_result' },
+  });
+  const tool = msg.content.find((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use');
+  if (!tool) throw new Error('Model did not return a tool_use result');
+  return tool.input as T;
 }

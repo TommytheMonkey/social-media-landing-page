@@ -4,7 +4,6 @@
 import type { MondayItem, Platform, GeneratedPost, GeneratedPart } from '../types';
 import { completeJSON } from '../clients/anthropic';
 import { tryLoadAssetText } from '../lib/assets';
-import { MAX_PARTS } from '../config/schedule';
 
 const STYLE_GUIDE = tryLoadAssetText('assets/brand/style-guide.md') ??
   'Talk to a smart, busy sitework contractor like a foreman who knows tech. ' +
@@ -23,11 +22,19 @@ const PLATFORM_RULES: Record<Platform, string> = {
     'sign-off "— Tommy, TakeoffMonkey". Short.',
 };
 
-interface RawGen {
-  parts: Array<{ text: string; imagePrompt: string }>;
-}
+// Flat schema (top-level string fields). A nested array caused Claude to
+// occasionally return it as a malformed JSON string, so we generate ONE post per
+// (item, platform). Multi-part splitting can be re-added later via separate calls.
+const POST_SCHEMA = {
+  type: 'object',
+  properties: {
+    text: { type: 'string', description: 'The full post copy, ready to publish.' },
+    imagePrompt: { type: 'string', description: 'Photoreal, text-free image prompt for the post.' },
+  },
+  required: ['text', 'imagePrompt'],
+};
 
-function systemPrompt(platform: Platform): string {
+export function systemPrompt(platform: Platform): string {
   return [
     'You are the TakeoffMonkey social copywriter. Write in the brand voice below.',
     '',
@@ -38,19 +45,17 @@ function systemPrompt(platform: Platform): string {
     `Target platform: ${platform}.`,
     PLATFORM_RULES[platform],
     '',
-    'Most posts are a SINGLE part. Only split into multiple parts when the topic is ' +
-      `genuinely a multi-part thread/carousel, and never exceed ${MAX_PARTS} parts.`,
-    'Never invent links, tool names, prices, or features. Only use a link if it was ' +
-      'provided to you. If you reference the newsletter, use the literal "[SUBSCRIBE LINK]" placeholder.',
-    'For each part also write an imagePrompt: a vivid, PHOTOREAL, TEXT-FREE prompt for a ' +
-      'real commercial sitework scene relevant to the post (no text, no logos, no words in the image).',
+    'Write ONE post. Never invent links, tool names, prices, or features. Only use a link ' +
+      'if it was provided to you. If you reference the newsletter, use the literal ' +
+      '"[SUBSCRIBE LINK]" placeholder.',
+    'Also write an imagePrompt: a vivid, PHOTOREAL, TEXT-FREE prompt for a real commercial ' +
+      'sitework scene relevant to the post (no text, no logos, no words in the image).',
     '',
-    'Respond with ONLY a JSON object of this exact shape:',
-    '{ "parts": [ { "text": "<the post copy>", "imagePrompt": "<image prompt>" } ] }',
+    'Return your result by calling the submit_result tool with the post text and imagePrompt.',
   ].join('\n');
 }
 
-function userPrompt(item: MondayItem): string {
+export function userPrompt(item: MondayItem): string {
   const lines = [
     `Topic / title: ${item.name}`,
     `Idea / description: ${item.description ?? '(none)'}`,
@@ -61,16 +66,15 @@ function userPrompt(item: MondayItem): string {
 }
 
 export async function generatePost(item: MondayItem, platform: Platform): Promise<GeneratedPost> {
-  const raw = await completeJSON<RawGen>(systemPrompt(platform), userPrompt(item));
-  const rawParts = Array.isArray(raw.parts) ? raw.parts.slice(0, MAX_PARTS) : [];
-  if (rawParts.length === 0) throw new Error('Generation returned no parts');
+  const raw = await completeJSON<{ text?: unknown; imagePrompt?: unknown }>(
+    systemPrompt(platform),
+    userPrompt(item),
+    POST_SCHEMA,
+  );
+  const text = typeof raw.text === 'string' ? raw.text.trim() : '';
+  const imagePrompt = typeof raw.imagePrompt === 'string' ? raw.imagePrompt.trim() : '';
+  if (text.length === 0) throw new Error('Generation returned no post text');
 
-  const total = rawParts.length;
-  const parts: GeneratedPart[] = rawParts.map((p, i) => ({
-    partNumber: i + 1,
-    totalParts: total,
-    text: (p.text ?? '').trim(),
-    imagePrompt: (p.imagePrompt ?? '').trim(),
-  }));
-  return { platform, parts };
+  const part: GeneratedPart = { partNumber: 1, totalParts: 1, text, imagePrompt };
+  return { platform, parts: [part] };
 }
