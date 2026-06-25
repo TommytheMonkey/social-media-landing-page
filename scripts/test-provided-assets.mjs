@@ -7,6 +7,7 @@
 // Usage: node scripts/test-provided-assets.mjs <sha>
 import { readFileSync, existsSync } from 'node:fs';
 import { google } from 'googleapis';
+import sharp from 'sharp';
 
 const env = {};
 if (existsSync('.env')) for (const line of readFileSync('.env', 'utf8').split('\n')) { const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)$/); if (m) env[m[1]] = m[2].replace(/^["']|["']$/g, ''); }
@@ -17,7 +18,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const C = { status: 'status', platform: 'dropdown_mm33c63g', voice: 'color_mm4m94nw', desc: 'text_mm4mvtmr', contentText: 'long_text_mm4mh8gr',
   creationTrigger: 'color_mm4mbf7j', contentImage: 'file_mm33j0pd', attachment: 'file_mm4n5f04', useMyCopy: 'boolean_mm4nakr6', downloadLink: 'link_mm4nm382', folder: 'link_mm4j5agh' };
 
-const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+const PNG = await sharp({ create: { width: 64, height: 64, channels: 3, background: { r: 200, g: 120, b: 80 } } }).png().toBuffer();
 const PDF = Buffer.from('%PDF-1.4\n% LetsGo test attachment — hosting smoke test\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n');
 const MY_COPY = 'Here is my exact, human-written post. Do not change a single word of this. — Tommy, TakeoffMonkey';
 
@@ -55,19 +56,25 @@ let ready = false;
 for (let i = 0; i < 30; i++) { const list = (await vapi(`/v6/deployments?app=social-media-landing-page&target=production&limit=10&teamId=${teamId}`)).deployments || []; const d = SHA ? list.find((x) => x.meta?.githubCommitSha === SHA) : list[0]; const st = d?.readyState || d?.state || 'none'; console.log(`deploy poll ${i + 1}: ${st}`); if (st === 'READY') { ready = true; break; } if (st === 'ERROR') { console.log('DEPLOY FAILED'); process.exit(1); } await sleep(10000); }
 if (!ready) { console.log('deploy not ready'); process.exit(1); }
 
+// Sweep any leftover PROV-* items from a previous failed run.
+const stale = ((await mgql(`query($b:ID!){boards(ids:[$b]){items_page(limit:100){items{id name}}}}`, { b: BOARD })).boards[0].items_page.items || []).filter((i) => /^PROV-[AB]/.test(i.name));
+for (const s of stale) { try { await mgql(`mutation($id:ID!){delete_item(item_id:$id){id}}`, { id: s.id }); } catch {} }
+if (stale.length) console.log(`swept ${stale.length} leftover PROV item(s)`);
+
 const cleanup = [];
 const folders = [];
 try {
   // Item A: auto copy + provided image + attachment
   const a = await createItem('PROV-A image+pdf', { [C.desc]: 'A quick tip about checking grade with a laser level before the concrete truck shows up.', [C.voice]: { label: 'Tommy' }, [C.platform]: { labels: ['LinkedIn'] } });
+  cleanup.push(a);
   await uploadFile(a, C.contentImage, PNG, 'my-photo.png', 'image/png');
   await uploadFile(a, C.attachment, PDF, 'lets-go-guide.pdf', 'application/pdf');
   await setCols(a, { [C.creationTrigger]: { label: 'Create Post!' } });
   // Item B: use my copy + attachment, no image
   const b = await createItem('PROV-B usemycopy+pdf', { [C.contentText]: { text: MY_COPY }, [C.useMyCopy]: { checked: 'true' }, [C.voice]: { label: 'Tommy' }, [C.platform]: { labels: ['LinkedIn'] } });
+  cleanup.push(b);
   await uploadFile(b, C.attachment, PDF, 'lets-go-guide.pdf', 'application/pdf');
   await setCols(b, { [C.creationTrigger]: { label: 'Create Post!' } });
-  cleanup.push(a, b);
   console.log(`created A=${a} (image+pdf), B=${b} (usemycopy+pdf); triggering /api/cron/poll...`);
 
   const ctrl = new AbortController(); const t = setTimeout(() => ctrl.abort(), 150000);
@@ -75,7 +82,10 @@ try {
   clearTimeout(t);
   console.log('poll:', await resp.text());
 
-  const [ia, ib] = await readCols([a, b], [C.status, C.contentImage, C.downloadLink, C.folder]);
+  // Monday returns items() in id order, not argument order — map by id, don't destructure.
+  const fetched = await readCols([a, b], [C.status, C.contentImage, C.downloadLink, C.folder]);
+  const byId = Object.fromEntries(fetched.map((it) => [it.id, it]));
+  const ia = byId[a], ib = byId[b];
   for (const it of [ia, ib]) { const f = colVal(it, C.folder)?.url?.match(/folders\/([a-zA-Z0-9_-]+)/)?.[1]; if (f) folders.push(f); }
 
   // --- Item A assertions ---
