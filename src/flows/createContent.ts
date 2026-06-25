@@ -22,6 +22,9 @@ import { DOWNLOAD_PUBLIC_BASE, MAX_ATTACHMENT_BYTES, MAX_IMAGE_BYTES } from '../
 
 const SOCIAL_ROOT_FOLDER_ID = '1Wu0FgCbW1qddaispMxVNqdOt-suFJZqe';
 
+/** Short platform code suffixed onto content filenames for dual-platform posts. */
+const PLATFORM_CODE: Record<Platform, string> = { LinkedIn: 'LI', Instagram: 'IG' };
+
 interface Cell {
   itemId: string;
   platform: Platform;
@@ -201,9 +204,10 @@ async function materializeCell(
   if (multi) segments.push(`part ${part.partNumber}`);
   const folder = await google.ensureFolderPath(SOCIAL_ROOT_FOLDER_ID, segments);
 
-  // Doc: "{title}[ - {platform}] - pt. {#} - {YYYY-MM-DD}"
+  // Doc: "{title} - pt. {#} - {YYYY-MM-DD}[ - LI|IG]" — the platform code is appended
+  // at the END for dual-platform posts so the two files are easy to tell apart.
   const docName =
-    `${baseTitle}${disambiguate ? ` - ${platform}` : ''} - pt. ${part.partNumber} - ${createdDate}`;
+    `${baseTitle} - pt. ${part.partNumber} - ${createdDate}${disambiguate ? ` - ${PLATFORM_CODE[platform]}` : ''}`;
   await google.createDoc(folder.id, docName, part.text);
 
   // Image: use the provided one if present; else generate (base + composite logo).
