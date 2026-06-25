@@ -50,6 +50,10 @@ export interface MondayItem {
   postChecked: boolean;
   /** True when the "Newsletter" checkbox is set (post already used in a newsletter). */
   newsletterUsed: boolean;
+  /** When true, use the provided Content-Text copy verbatim (skip copy generation). */
+  useMyCopy: boolean;
+  /** Monday asset IDs in the Attachment file column (a file to host + link in the post). */
+  attachmentAssetIds: string[];
 }
 
 /** One part of a (possibly multi-part) generated post for a single platform. */

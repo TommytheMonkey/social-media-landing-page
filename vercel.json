@@ -1,6 +1,12 @@
 {
   "cleanUrls": true,
   "trailingSlash": false,
+  "rewrites": [
+    {
+      "source": "/downloads/:path*",
+      "destination": "https://o31qlvvkeybeqyha.public.blob.vercel-storage.com/content-engine/downloads/:path*"
+    }
+  ],
   "functions": {
     "api/**/*.ts": {
       "maxDuration": 300,

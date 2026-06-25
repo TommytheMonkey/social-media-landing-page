@@ -18,9 +18,11 @@ export const READ_COLUMN_IDS: string[] = [
   COLUMNS.postDate,
   COLUMNS.contentText,
   COLUMNS.contentImage,
+  COLUMNS.attachment,
   COLUMNS.contentFolder,
   COLUMNS.postCheckbox,
   COLUMNS.newsletterCheckbox,
+  COLUMNS.useMyCopy,
 ];
 
 const KNOWN_PLATFORMS = new Set<string>(Object.values(PLATFORM));
@@ -69,8 +71,8 @@ function parseDate(cols: Map<string, RawColumnValue>): string | null {
   return text(cols, COLUMNS.postDate);
 }
 
-function parseFiles(cols: Map<string, RawColumnValue>): string[] {
-  const v = parseJson(cols.get(COLUMNS.contentImage)?.value ?? null);
+function parseFilesFrom(cols: Map<string, RawColumnValue>, colId: string): string[] {
+  const v = parseJson(cols.get(colId)?.value ?? null);
   const files = v?.files;
   if (!Array.isArray(files)) return [];
   return files
@@ -87,7 +89,7 @@ export function parseItem(raw: RawItem): MondayItem {
   const cols = byId(raw);
   const platformLabels = parsePlatformLabels(cols);
   const platforms = platformLabels.filter((l) => KNOWN_PLATFORMS.has(l)) as Platform[];
-  const assetIds = parseFiles(cols);
+  const assetIds = parseFilesFrom(cols, COLUMNS.contentImage);
   return {
     id: raw.id,
     name: raw.name,
@@ -108,5 +110,7 @@ export function parseItem(raw: RawItem): MondayItem {
     folder: parseLink(cols, COLUMNS.contentFolder),
     postChecked: parseCheckbox(cols, COLUMNS.postCheckbox),
     newsletterUsed: parseCheckbox(cols, COLUMNS.newsletterCheckbox),
+    useMyCopy: parseCheckbox(cols, COLUMNS.useMyCopy),
+    attachmentAssetIds: parseFilesFrom(cols, COLUMNS.attachment),
   };
 }

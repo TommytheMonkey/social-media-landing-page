@@ -55,20 +55,27 @@ export function systemPrompt(platform: Platform): string {
   ].join('\n');
 }
 
-export function userPrompt(item: MondayItem): string {
+export function userPrompt(item: MondayItem, downloadUrl?: string): string {
   const lines = [
     `Topic / title: ${item.name}`,
     `Idea / description: ${item.description ?? '(none)'}`,
   ];
   if (item.backlink?.url) lines.push(`Link to include: ${item.backlink.url}`);
+  if (downloadUrl) {
+    lines.push(`Download link to feature — weave it in as a clear download call-to-action, using this EXACT URL: ${downloadUrl}`);
+  }
   if (item.voice) lines.push(`Voice / persona: ${item.voice}`);
   return lines.join('\n');
 }
 
-export async function generatePost(item: MondayItem, platform: Platform): Promise<GeneratedPost> {
+export async function generatePost(
+  item: MondayItem,
+  platform: Platform,
+  downloadUrl?: string,
+): Promise<GeneratedPost> {
   const raw = await completeJSON<{ text?: unknown; imagePrompt?: unknown }>(
     systemPrompt(platform),
-    userPrompt(item),
+    userPrompt(item, downloadUrl),
     POST_SCHEMA,
   );
   const text = typeof raw.text === 'string' ? raw.text.trim() : '';

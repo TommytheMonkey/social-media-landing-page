@@ -16,3 +16,23 @@ export async function uploadPublicImage(
   });
   return url;
 }
+
+/**
+ * Upload an arbitrary file to a DETERMINISTIC public key under downloads/ (no random
+ * suffix), so a stable Vercel rewrite can serve it from the branded domain. `key` must
+ * be URL-safe (the caller sanitizes it). Returns the raw Blob URL; the caller derives
+ * the branded letsgo.takeo.co/downloads/<key> link from the same key.
+ */
+export async function uploadPublicFile(
+  key: string,
+  bytes: Buffer,
+  contentType: string,
+): Promise<string> {
+  const { url } = await put(`content-engine/downloads/${key}`, bytes, {
+    access: 'public',
+    contentType,
+    addRandomSuffix: false,
+    allowOverwrite: true,
+  });
+  return url;
+}
