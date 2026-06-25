@@ -35,6 +35,7 @@ export const POST_TRIGGER = {
   clear: 'Clear!',
   junk: 'Junk',
   postNow: 'Post Now!',
+  cancel: 'CANCEL!',
 } as const;
 
 /** Status labels. */
@@ -45,6 +46,7 @@ export const STATUS = {
   pastDue: 'Past Due!',
   error: 'Error - Check Updates',
   live: 'Live!',
+  cancelled: 'Cancelled',
 } as const;
 
 /** Platform dropdown labels. */

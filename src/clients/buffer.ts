@@ -167,3 +167,23 @@ export async function createPost(args: CreatePostArgs): Promise<string> {
   if (result.post?.id) return result.post.id;
   throw new Error(`Buffer createPost failed: ${result.message ?? result.__typename ?? 'unknown error'}`);
 }
+
+/** Cancel/delete a post by its Buffer id (works on scheduled, not-yet-published posts). */
+export async function deletePost(postId: string): Promise<void> {
+  if (process.env.BUFFER_DRY_RUN === 'true') {
+    log.warn('BUFFER_DRY_RUN active — not deleting from Buffer', { postId });
+    return;
+  }
+  const data = await bufferGql<{ deletePost: { __typename: string; message?: string } }>(
+    `mutation ($id: PostId!) {
+       deletePost(input: { id: $id }) {
+         __typename
+         ... on VoidMutationError { message }
+       }
+     }`,
+    { id: postId },
+  );
+  const result = data.deletePost;
+  if (result.__typename === 'DeletePostSuccess') return;
+  throw new Error(`Buffer deletePost failed: ${result.message ?? result.__typename ?? 'unknown error'}`);
+}

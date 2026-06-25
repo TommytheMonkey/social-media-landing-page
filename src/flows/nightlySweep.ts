@@ -11,20 +11,23 @@ import { parseItem, READ_COLUMN_IDS } from '../domain/item';
 import { reportError } from '../domain/errors';
 import { isBeforeTodayEastern } from '../lib/timezone';
 import { pollAndSchedule } from './scheduleToBuffer';
+import { pollAndCancel } from './cancelPost';
 import { log } from '../lib/logger';
 
 export interface NightlySummary {
   missedScheduled: number;
+  cancelled: number;
   pastDue: number;
   reconciled: number;
   junked: number;
 }
 
 export async function runNightly(): Promise<NightlySummary> {
-  const summary: NightlySummary = { missedScheduled: 0, pastDue: 0, reconciled: 0, junked: 0 };
+  const summary: NightlySummary = { missedScheduled: 0, cancelled: 0, pastDue: 0, reconciled: 0, junked: 0 };
 
   // 1. Safety net for anything the 5-minute poll missed.
   summary.missedScheduled = await pollAndSchedule();
+  summary.cancelled = await pollAndCancel();
 
   // 2. Past Due — candidates are not-yet-scheduled items (ideation / Raw Draft).
   const candidates = [
