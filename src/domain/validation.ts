@@ -10,9 +10,10 @@ import type { MondayItem, ValidationResult } from '../types';
 export function validateForSend(item: MondayItem, requireDate: boolean): ValidationResult {
   const missing: string[] = [];
 
+  // NOTE: post text is NOT checked here — it's read from the Google Doc at send
+  // time (see resolvePostTextFromDoc), which throws/reports if the Doc is empty.
   if (!item.voice) missing.push('Voice');
   if (!item.platform) missing.push('Platform');
-  if (!item.contentText || item.contentText.trim().length === 0) missing.push('Content Text');
   if (item.platform === 'Instagram' && !item.hasImage) {
     missing.push('Image (required for Instagram)');
   }

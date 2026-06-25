@@ -13,7 +13,7 @@ import { validateForSend } from '../domain/validation';
 import { reportError, reportValidationFailure } from '../domain/errors';
 import { recordBufferPostId, currentStatus } from '../lib/idempotency';
 import { scheduledUtcISO } from '../lib/timezone';
-import { prepareImageUrl } from './sendShared';
+import { prepareImageUrl, resolvePostTextFromDoc, wordCount } from './sendShared';
 import { log } from '../lib/logger';
 
 /** Poll for cleared raw drafts and schedule each to Buffer. */
@@ -45,8 +45,8 @@ export async function scheduleItem(item: MondayItem): Promise<boolean> {
     return false;
   }
   // Narrowed by validation, but help the compiler:
-  const { voice, platform, contentText, postDate } = item;
-  if (!voice || !platform || !contentText || !postDate) {
+  const { voice, platform, postDate } = item;
+  if (!voice || !platform || !postDate) {
     await reportValidationFailure(item.id, check.missing);
     return false;
   }
@@ -61,6 +61,14 @@ export async function scheduleItem(item: MondayItem): Promise<boolean> {
     return false;
   }
 
+  // Snapshot the (possibly edited) Google Doc text into long-text + word-count,
+  // and use it as the post body. Throws (-> reportError) if the Doc is missing/empty.
+  const text = await resolvePostTextFromDoc(item);
+  await monday.updateColumns(item.id, {
+    [COLUMNS.contentText]: cv.longText(text),
+    [COLUMNS.postWordCount]: cv.number(wordCount(text)),
+  });
+
   const imageUrl = await prepareImageUrl(item);
   const dueAtUtc = scheduledUtcISO(postDate);
 
@@ -70,7 +78,7 @@ export async function scheduleItem(item: MondayItem): Promise<boolean> {
     return false;
   }
 
-  const postId = await createPost({ channelId, text: contentText, platform, imageUrl, dueAtUtc });
+  const postId = await createPost({ channelId, text, platform, imageUrl, dueAtUtc });
 
   // Mark scheduled immediately so re-polls skip it; audit is best-effort.
   await monday.updateColumns(item.id, { [COLUMNS.status]: cv.status(STATUS.scheduled) });

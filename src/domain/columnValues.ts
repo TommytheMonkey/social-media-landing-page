@@ -27,4 +27,8 @@ export const cv = {
   checkbox(checked: boolean) {
     return checked ? { checked: 'true' } : null;
   },
+  /** numbers column. */
+  number(n: number) {
+    return String(n);
+  },
 };

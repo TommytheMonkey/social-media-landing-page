@@ -232,12 +232,13 @@ export async function getGroupIdByTitle(title: string): Promise<string | null> {
 export async function updateColumns(
   itemId: string,
   values: Record<string, unknown>,
+  createLabelsIfMissing = false,
 ): Promise<void> {
   await gql(
-    `mutation ($board: ID!, $item: ID!, $vals: JSON!) {
-       change_multiple_column_values(board_id: $board, item_id: $item, column_values: $vals) { id }
+    `mutation ($board: ID!, $item: ID!, $vals: JSON!, $create: Boolean!) {
+       change_multiple_column_values(board_id: $board, item_id: $item, column_values: $vals, create_labels_if_missing: $create) { id }
      }`,
-    { board: BOARD_ID, item: itemId, vals: JSON.stringify(values) },
+    { board: BOARD_ID, item: itemId, vals: JSON.stringify(values), create: createLabelsIfMissing },
   );
 }
 

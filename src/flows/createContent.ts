@@ -46,8 +46,14 @@ export async function pollAndCreate(): Promise<number> {
 }
 
 export async function createForItem(item: MondayItem): Promise<void> {
-  // Clear the trigger immediately so neither the original nor its duplicates re-fire.
-  await monday.updateColumns(item.id, { [COLUMNS.creationTrigger]: cv.status('') });
+  // Mark the trigger "~Created~" immediately so neither the original nor its
+  // duplicates re-fire (the poll only matches "Create Post!"). Also serves as the
+  // visible "this item has been generated" state.
+  await monday.updateColumns(
+    item.id,
+    { [COLUMNS.creationTrigger]: cv.status(CREATION_TRIGGER.created) },
+    true, // auto-create the "~Created~" label if it doesn't exist yet
+  );
 
   if (!item.description || item.description.trim().length === 0) {
     await reportError(item.id, 'Flow 1 aborted', new Error('Description is required to create a post'));
@@ -113,11 +119,12 @@ async function materializeCell(
   const rendered = await generatePostImage(part.imagePrompt, `${docName}.png`);
   await google.uploadImage(folder.id, rendered.filename, rendered.bytes, rendered.contentType);
 
-  // Write the Monday columns (everything except the file upload, which is separate).
+  // Write the Monday columns. NOTE: the long-text column is intentionally NOT
+  // populated here — the Google Doc is the editable source of truth, and Flow 2/3
+  // snapshot the (possibly edited) Doc text into long-text at send time.
   await monday.renameItem(itemId, itemName);
   await monday.updateColumns(itemId, {
     [COLUMNS.platform]: cv.dropdown([platform]),
-    [COLUMNS.contentText]: cv.longText(part.text),
     [COLUMNS.contentFolder]: cv.link(folder.webViewLink, 'Drive folder'),
     [COLUMNS.status]: cv.status(STATUS.rawDraft),
     [COLUMNS.postTrigger]: cv.status(POST_TRIGGER.needsEdits),

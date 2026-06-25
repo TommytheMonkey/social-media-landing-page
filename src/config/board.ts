@@ -13,10 +13,11 @@ export const COLUMNS = {
   postTrigger: 'color_mm4meks3', // status — Needs Edits / Clear! / Junk / Post Now!
   status: 'status', // status — pipeline status
   postDate: 'date_mm33qjbw', // date — day to post (always 5am ET)
-  contentText: 'long_text_mm4mh8gr', // long text — the post copy
+  contentText: 'long_text_mm4mh8gr', // long text — post copy snapshot (populated at Clear!, from the Doc)
   contentImage: 'file_mm33j0pd', // file — generated image (upload bytes; cannot hold a URL)
   contentFolder: 'link_mm4j5agh', // link — Drive folder for the post
   postCheckbox: 'boolean_mm4mxfvy', // checkbox — "Post"
+  postWordCount: 'numeric_mm4nh9r1', // numbers — word count of the final post (set at Clear!)
 } as const;
 
 /** Creation Trigger labels. Only "Create Post!" is in scope for phase 1. */
@@ -24,6 +25,8 @@ export const CREATION_TRIGGER = {
   createPost: 'Create Post!',
   createBlog: 'Create Blog!',
   createNewsletter: 'Create Newsletter!',
+  /** Set by Flow 1 after a post is created (replaces the "Create Post!" trigger). */
+  created: '~Created~',
 } as const;
 
 /** Post Trigger labels. */

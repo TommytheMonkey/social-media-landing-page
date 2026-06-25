@@ -148,6 +148,32 @@ export async function createDoc(
   return { id, webViewLink: created.data.webViewLink ?? `https://docs.google.com/document/d/${id}/edit` };
 }
 
+/** Find the (most recently modified) Google Doc inside a folder. Returns its id. */
+export async function findDocInFolder(folderId: string): Promise<string | null> {
+  const d = drive();
+  const res = await d.files.list({
+    q: `'${folderId}' in parents and mimeType = '${DOC_MIME}' and trashed = false`,
+    fields: 'files(id,name,modifiedTime)',
+    orderBy: 'modifiedTime desc',
+    pageSize: 1,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+  });
+  return res.data.files?.[0]?.id ?? null;
+}
+
+/** Read the plain-text body of a Google Doc. */
+export async function readDocText(documentId: string): Promise<string> {
+  const res = await docs().documents.get({ documentId });
+  let text = '';
+  for (const el of res.data.body?.content ?? []) {
+    for (const pe of el.paragraph?.elements ?? []) {
+      if (pe.textRun?.content) text += pe.textRun.content;
+    }
+  }
+  return text;
+}
+
 /** Upload image bytes into a Drive folder. Returns the file ref. */
 export async function uploadImage(
   folderId: string,
