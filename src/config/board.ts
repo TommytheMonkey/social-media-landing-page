@@ -8,6 +8,7 @@ export const COLUMNS = {
   description: 'text_mm4mvtmr', // short text — team's post idea (REQUIRED for creation)
   backlink: 'link_mm4mdabt', // link — optional links to include in the post
   platform: 'dropdown_mm33c63g', // dropdown — LinkedIn | Instagram
+  postType: 'dropdown_mm4nwd5y', // dropdown — How-to / Playbook | Tip / Trick / Hack | Product Review
   voice: 'color_mm4m94nw', // status — which account/persona
   creationTrigger: 'color_mm4mbf7j', // status — Create Post! / Blog! / Newsletter!
   postTrigger: 'color_mm4meks3', // status — Needs Edits / Clear! / Junk / Post Now!

@@ -33,6 +33,8 @@ export interface MondayItem {
   platform: Platform | null;
   /** ALL raw platform-dropdown labels, including non-social ones (Newsletter/Blog). */
   platformLabels: string[];
+  /** Post Type dropdown label (How-to / Playbook | Tip / Trick / Hack | Product Review), or null. */
+  postType: string | null;
   voice: Voice | null;
   creationTrigger: string | null;
   postTrigger: string | null;

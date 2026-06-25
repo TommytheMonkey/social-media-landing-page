@@ -162,6 +162,30 @@ export async function findDocInFolder(folderId: string): Promise<string | null> 
   return res.data.files?.[0]?.id ?? null;
 }
 
+/** Find a Google Doc by exact name within a folder. Returns its id, or null. */
+export async function findDocByName(folderId: string, name: string): Promise<string | null> {
+  const d = drive();
+  const safeName = name.replace(/'/g, "\\'");
+  const res = await d.files.list({
+    q: `name = '${safeName}' and '${folderId}' in parents and mimeType = '${DOC_MIME}' and trashed = false`,
+    fields: 'files(id)',
+    orderBy: 'createdTime',
+    pageSize: 1,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+  });
+  return res.data.files?.[0]?.id ?? null;
+}
+
+/** Insert text at the very start of a Google Doc (prepend), leaving prior content below. */
+export async function prependToDoc(documentId: string, text: string): Promise<void> {
+  if (text.length === 0) return;
+  await docs().documents.batchUpdate({
+    documentId,
+    requestBody: { requests: [{ insertText: { location: { index: 1 }, text } }] },
+  });
+}
+
 /** Read the plain-text body of a Google Doc. */
 export async function readDocText(documentId: string): Promise<string> {
   const res = await docs().documents.get({ documentId });
