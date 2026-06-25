@@ -72,16 +72,24 @@ export async function scheduleItem(item: MondayItem): Promise<boolean> {
   const imageUrl = await prepareImageUrl(item);
   const dueAtUtc = scheduledUtcISO(postDate);
 
-  // Compare-and-act: bail if a concurrent run already moved this item off Raw Draft.
+  // Compare-and-act, then CLAIM: bail if no longer Raw Draft, then flip to
+  // Scheduled! BEFORE the non-idempotent send. A re-run now sees Scheduled! (not
+  // Raw Draft) and skips, even if the audit write later fails — no double-schedule.
   if ((await currentStatus(item.id)) !== STATUS.rawDraft) {
     log.info('Flow 2 skip — item no longer Raw Draft', { itemId: item.id });
     return false;
   }
-
-  const postId = await createPost({ channelId, text, platform, imageUrl, dueAtUtc });
-
-  // Mark scheduled immediately so re-polls skip it; audit is best-effort.
   await monday.updateColumns(item.id, { [COLUMNS.status]: cv.status(STATUS.scheduled) });
+
+  let postId: string;
+  try {
+    postId = await createPost({ channelId, text, platform, imageUrl, dueAtUtc });
+  } catch (err) {
+    // Roll the claim back so a send failure is visible, not stuck as Scheduled!.
+    await monday.updateColumns(item.id, { [COLUMNS.status]: cv.status(STATUS.error) }).catch(() => undefined);
+    throw err;
+  }
+
   try {
     await recordBufferPostId(item.id, channelId, postId, postDate);
   } catch (auditErr) {

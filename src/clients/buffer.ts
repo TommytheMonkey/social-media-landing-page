@@ -168,11 +168,23 @@ export async function createPost(args: CreatePostArgs): Promise<string> {
   throw new Error(`Buffer createPost failed: ${result.message ?? result.__typename ?? 'unknown error'}`);
 }
 
-/** Cancel/delete a post by its Buffer id (works on scheduled, not-yet-published posts). */
-export async function deletePost(postId: string): Promise<void> {
+export interface DeleteResult {
+  /** True if the post was removed from the queue. False if it was already gone
+   *  (already published, not found, or already deleted) — caller handles gracefully. */
+  deleted: boolean;
+  message?: string;
+}
+
+/**
+ * Cancel/delete a scheduled post by its Buffer id. Returns {deleted:false} when
+ * Buffer reports the post can't be deleted (e.g. it already published) rather than
+ * throwing — so a CANCEL! on an already-live post degrades to a manual-delete note
+ * instead of a stuck error.
+ */
+export async function deletePost(postId: string): Promise<DeleteResult> {
   if (process.env.BUFFER_DRY_RUN === 'true') {
     log.warn('BUFFER_DRY_RUN active — not deleting from Buffer', { postId });
-    return;
+    return { deleted: true };
   }
   const data = await bufferGql<{ deletePost: { __typename: string; message?: string } }>(
     `mutation ($id: PostId!) {
@@ -184,6 +196,6 @@ export async function deletePost(postId: string): Promise<void> {
     { id: postId },
   );
   const result = data.deletePost;
-  if (result.__typename === 'DeletePostSuccess') return;
-  throw new Error(`Buffer deletePost failed: ${result.message ?? result.__typename ?? 'unknown error'}`);
+  if (result.__typename === 'DeletePostSuccess') return { deleted: true };
+  return { deleted: false, message: result.message ?? result.__typename };
 }

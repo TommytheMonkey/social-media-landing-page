@@ -5,7 +5,7 @@
 // duplicate the original into the full part×platform matrix, then materialize
 // each cell (Drive folder + Doc + image, then write the Monday columns).
 
-import type { MondayItem, Platform, GeneratedPart } from '../types';
+import type { MondayItem, Platform, GeneratedPart, GeneratedPost } from '../types';
 import * as monday from '../clients/monday';
 import * as google from '../clients/google';
 import { COLUMNS, STATUS, POST_TRIGGER, CREATION_TRIGGER } from '../config/board';
@@ -63,34 +63,62 @@ export async function createForItem(item: MondayItem): Promise<void> {
   const platforms: Platform[] = item.platforms.length > 0 ? item.platforms : [DEFAULT_PLATFORM];
   const disambiguate = platforms.length > 1; // include platform in folder path / doc name
 
-  // Generate copy for each platform up front so we know the matrix size.
-  const generated = await Promise.all(platforms.map((p) => generatePost(item, p)));
+  // Generate copy per platform, ISOLATED — one platform's failure must not discard
+  // the others (or stall the whole item with the trigger already consumed).
+  const generated: GeneratedPost[] = [];
+  const failedPlatforms: Platform[] = [];
+  for (const p of platforms) {
+    try {
+      generated.push(await generatePost(item, p));
+    } catch (err) {
+      failedPlatforms.push(p);
+      log.warn('Flow 1 generation failed for a platform', {
+        itemId: item.id,
+        platform: p,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+  if (generated.length === 0) {
+    await reportError(item.id, 'Flow 1 generation failed for all platforms', new Error(platforms.join(', ')));
+    return;
+  }
+  if (failedPlatforms.length > 0) {
+    await monday.createUpdate(
+      item.id,
+      `⚠️ Generation failed for: ${failedPlatforms.join(', ')} — created the other platform(s). Re-trigger to retry the rest.`,
+    );
+  }
 
-  // Flat cell list: the first cell reuses the original item; the rest are
-  // duplicates of the original (inheriting description/backlink/voice + the
-  // now-cleared trigger).
+  // Flat cell list (first cell reuses the original; the rest are duplicates).
   const cellSpecs: Array<{ platform: Platform; part: GeneratedPart }> = [];
   for (const post of generated) {
     for (const part of post.parts) cellSpecs.push({ platform: post.platform, part });
   }
 
+  // Create ALL cell ids UP FRONT from the still-pristine original (its file column
+  // is empty here), so no duplicate inherits a sibling's uploaded image.
+  const cellIds: string[] = [item.id];
+  for (let i = 1; i < cellSpecs.length; i++) {
+    cellIds.push(await monday.duplicateItem(item.id, false));
+  }
+
+  // Materialize each cell independently — a single cell's failure reports on THAT
+  // cell and doesn't clobber the already-materialized original.
   const createdDate = todayInEastern();
   let materialized = 0;
   for (let i = 0; i < cellSpecs.length; i++) {
     const spec = cellSpecs[i]!;
-    // Create + materialize each cell in its own try/catch so a single cell's
-    // failure reports on that item and does not orphan/abort the others.
-    let cellId = item.id;
+    const cellId = cellIds[i]!;
     try {
-      if (i > 0) cellId = await monday.duplicateItem(item.id, false);
       await materializeCell(item.name, { itemId: cellId, platform: spec.platform, part: spec.part }, disambiguate, createdDate);
       materialized++;
     } catch (err) {
-      await reportError(cellId, `Flow 1 cell ${i + 1}/${cellSpecs.length} failed`, err);
+      await reportError(cellId, `Flow 1 cell ${i + 1}/${cellSpecs.length} (${spec.platform}) failed`, err);
     }
   }
 
-  log.info('Flow 1 created posts', { sourceItem: item.id, materialized, total: cellSpecs.length, platforms });
+  log.info('Flow 1 created posts', { sourceItem: item.id, materialized, total: cellSpecs.length, platforms, failedPlatforms });
 }
 
 async function materializeCell(

@@ -278,14 +278,17 @@ export async function createItem(
   return data.create_item.id;
 }
 
-/** Read an item's updates (comments), newest first. */
+/** Read a page of an item's updates (comments), newest first. */
 export async function getItemUpdates(
   itemId: string,
-  limit = 25,
+  limit = 50,
+  page = 1,
 ): Promise<Array<{ body: string; created_at: string }>> {
   const data = await gql<{ items: Array<{ updates: Array<{ body: string; created_at: string }> }> }>(
-    `query ($ids: [ID!], $limit: Int!) { items(ids: $ids) { updates(limit: $limit) { body created_at } } }`,
-    { ids: [itemId], limit },
+    `query ($ids: [ID!], $limit: Int!, $page: Int!) {
+       items(ids: $ids) { updates(limit: $limit, page: $page) { body created_at } }
+     }`,
+    { ids: [itemId], limit, page },
   );
   return data.items?.[0]?.updates ?? [];
 }

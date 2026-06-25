@@ -36,14 +36,21 @@ export async function currentStatus(itemId: string): Promise<string | null> {
   return fresh.column_values.find((c) => c.id === COLUMNS.status)?.text ?? null;
 }
 
-/** Recover the Buffer post id recorded by recordBufferPostId (most recent marker). */
+/**
+ * Recover the most-recent Buffer post id recorded by recordBufferPostId. Paginates
+ * the item's updates (newest first) so the marker can't fall outside a fixed window.
+ */
 export async function findBufferPostId(itemId: string): Promise<string | null> {
-  const updates = (await monday.getItemUpdates(itemId, 30)).sort((a, b) =>
-    b.created_at.localeCompare(a.created_at),
-  );
-  for (const u of updates) {
-    const m = u.body.match(new RegExp(`${BUFFER_MARKER}([a-zA-Z0-9]+)`));
-    if (m) return m[1]!;
+  const re = new RegExp(`${BUFFER_MARKER}([^\\s)]+)`);
+  const PAGE = 50;
+  for (let page = 1; page <= 10; page++) {
+    const updates = await monday.getItemUpdates(itemId, PAGE, page);
+    if (updates.length === 0) break;
+    for (const u of updates) {
+      const m = u.body.match(re);
+      if (m) return m[1]!;
+    }
+    if (updates.length < PAGE) break;
   }
   return null;
 }

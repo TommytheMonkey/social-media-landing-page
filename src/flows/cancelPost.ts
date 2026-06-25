@@ -45,21 +45,27 @@ export async function pollAndCancel(): Promise<number> {
 export async function cancelItem(item: MondayItem): Promise<boolean> {
   const status = item.status;
 
-  // Nothing was scheduled/published in these states — do nothing.
+  // EVERY terminal path clears the Post Trigger so the item stops re-matching the
+  // CANCEL! poll (the filter is trigger-only, not status-aware).
+  const clearTrigger = { [COLUMNS.postTrigger]: cv.status('') };
+
+  // Nothing was scheduled/published in these states — just clear the trigger.
   if (
     status === STATUS.ideation ||
     status === STATUS.rawDraft ||
     status === STATUS.error ||
     status === STATUS.pastDue ||
-    status === STATUS.cancelled
+    status === STATUS.cancelled ||
+    status == null
   ) {
+    await monday.updateColumns(item.id, clearTrigger);
     log.info('Cancel: nothing to cancel', { itemId: item.id, status });
     return false;
   }
 
   // Already published — Buffer can't unpublish it; flag for manual deletion.
   if (status === STATUS.live) {
-    await monday.updateColumns(item.id, { [COLUMNS.status]: cv.status(STATUS.error) });
+    await monday.updateColumns(item.id, { [COLUMNS.status]: cv.status(STATUS.error), ...clearTrigger });
     await monday.createUpdate(
       item.id,
       `⚠️ This post is already LIVE — it can't be unpublished automatically. ` +
@@ -74,10 +80,10 @@ export async function cancelItem(item: MondayItem): Promise<boolean> {
   if (status === STATUS.scheduled) {
     const postId = await findBufferPostId(item.id);
     if (!postId) {
-      await reportError(
+      await monday.updateColumns(item.id, { [COLUMNS.status]: cv.status(STATUS.error), ...clearTrigger });
+      await monday.createUpdate(
         item.id,
-        'Cancel failed',
-        new Error('No Buffer post id found on this item — check/cancel it in Buffer manually.'),
+        '⚠️ Couldn\'t find the Buffer post id for this scheduled item — check/cancel it in Buffer manually.',
       );
       return false;
     }
@@ -88,19 +94,30 @@ export async function cancelItem(item: MondayItem): Promise<boolean> {
       return false;
     }
 
-    await deletePost(postId);
-    await monday.updateColumns(item.id, {
-      [COLUMNS.status]: cv.status(STATUS.cancelled),
-      [COLUMNS.postTrigger]: cv.status(''), // clear so it doesn't re-match CANCEL!
-    });
+    const result = await deletePost(postId);
+    if (result.deleted) {
+      await monday.updateColumns(item.id, { [COLUMNS.status]: cv.status(STATUS.cancelled), ...clearTrigger });
+      await monday.createUpdate(
+        item.id,
+        `✅ Canceled the scheduled Buffer post (id ${postId}) — removed from the queue before it published.`,
+      );
+      log.info('Cancel: scheduled post canceled', { itemId: item.id, postId });
+      return true;
+    }
+
+    // Buffer couldn't delete it — almost always means it already published (Buffer
+    // doesn't notify Monday when a scheduled post goes live). Flag for manual deletion.
+    await monday.updateColumns(item.id, { [COLUMNS.status]: cv.status(STATUS.error), ...clearTrigger });
     await monday.createUpdate(
       item.id,
-      `✅ Canceled the scheduled Buffer post (id ${postId}) — removed from the queue before it published.`,
+      `⚠️ Couldn't remove Buffer post ${postId} (${result.message ?? 'unknown'}) — it may have already ` +
+        `published. Verify and, if needed, manually delete it from ${item.platform ?? 'the platform'}.`,
     );
-    log.info('Cancel: scheduled post canceled', { itemId: item.id, postId });
-    return true;
+    log.warn('Cancel: deletePost did not remove the post', { itemId: item.id, postId, message: result.message });
+    return false;
   }
 
+  await monday.updateColumns(item.id, clearTrigger);
   log.info('Cancel: unhandled status, no-op', { itemId: item.id, status });
   return false;
 }

@@ -71,22 +71,27 @@ export async function postNowItem(item: MondayItem): Promise<boolean> {
 
   const imageUrl = await prepareImageUrl(item);
 
-  // Compare-and-act: bail if a concurrent run already sent or errored this item.
+  // Compare-and-act + CLAIM: bail if already sent/errored, then flip to Live! and
+  // clear the trigger BEFORE the irreversible publish, so a re-run sees Live! and
+  // can never double-post. Roll back to Error if the publish itself fails.
   const fresh = await currentStatus(item.id);
   if (fresh === STATUS.live || fresh === STATUS.error) {
     log.info('Flow 3 skip — item already sent/errored', { itemId: item.id, status: fresh });
     return false;
   }
-
-  const postId = await createPost({ channelId, text, platform, imageUrl });
-
-  // Mark Live! AND clear the trigger in one write so the item can never re-match
-  // the "Post Now!" poll. If this write fails, reportError sets Status=Error,
-  // which the poll guard now excludes — so no duplicate publish. Audit is best-effort.
   await monday.updateColumns(item.id, {
     [COLUMNS.status]: cv.status(STATUS.live),
     [COLUMNS.postTrigger]: cv.status(''),
   });
+
+  let postId: string;
+  try {
+    postId = await createPost({ channelId, text, platform, imageUrl });
+  } catch (err) {
+    await monday.updateColumns(item.id, { [COLUMNS.status]: cv.status(STATUS.error) }).catch(() => undefined);
+    throw err;
+  }
+
   try {
     await recordBufferPostId(item.id, channelId, postId, null);
   } catch (auditErr) {
