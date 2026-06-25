@@ -18,6 +18,8 @@ export const COLUMNS = {
   contentFolder: 'link_mm4j5agh', // link — Drive folder for the post
   postCheckbox: 'boolean_mm4mxfvy', // checkbox — "Post"
   postWordCount: 'numeric_mm4nh9r1', // numbers — word count of the final post (set at Clear!)
+  newsletterCheckbox: 'boolean_mm4mh94v', // checkbox — "Newsletter" (set when a post is used in a newsletter)
+  newsletterWordCount: 'numeric_mm4n5xpx', // numbers — word count of the assembled newsletter
 } as const;
 
 /** Creation Trigger labels. Only "Create Post!" is in scope for phase 1. */
@@ -55,6 +57,9 @@ export const PLATFORM = {
   instagram: 'Instagram',
 } as const;
 
+/** Non-social Platform labels — these must NEVER be sent to Buffer. */
+export const NON_SOCIAL_PLATFORMS = ['Newsletter', 'Blog'] as const;
+
 /** Voice (status) labels. */
 export const VOICE = {
   tommy: 'Tommy',
@@ -68,3 +73,6 @@ export const VOICE = {
 
 /** Group (by title) that "Junk" items are moved into. */
 export const GARBAGE_GROUP_TITLE = 'Garbage';
+
+/** Group (by title) where assembled newsletters are created. */
+export const NEWSLETTER_PREP_GROUP_TITLE = 'Newsletter Prep';

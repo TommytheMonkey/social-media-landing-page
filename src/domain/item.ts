@@ -19,6 +19,7 @@ export const READ_COLUMN_IDS: string[] = [
   COLUMNS.contentImage,
   COLUMNS.contentFolder,
   COLUMNS.postCheckbox,
+  COLUMNS.newsletterCheckbox,
 ];
 
 const KNOWN_PLATFORMS = new Set<string>(Object.values(PLATFORM));
@@ -42,13 +43,10 @@ function text(cols: Map<string, RawColumnValue>, id: string): string | null {
   return t && t.length > 0 ? t : null;
 }
 
-function parsePlatforms(cols: Map<string, RawColumnValue>): Platform[] {
+function parsePlatformLabels(cols: Map<string, RawColumnValue>): string[] {
   const t = text(cols, COLUMNS.platform);
   if (!t) return [];
-  return t
-    .split(',')
-    .map((s) => s.trim())
-    .filter((s) => KNOWN_PLATFORMS.has(s)) as Platform[];
+  return t.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
 }
 
 function parseVoice(cols: Map<string, RawColumnValue>): Voice | null {
@@ -79,14 +77,15 @@ function parseFiles(cols: Map<string, RawColumnValue>): string[] {
     .filter((x: string | null): x is string => x !== null);
 }
 
-function parseCheckbox(cols: Map<string, RawColumnValue>): boolean {
-  const v = parseJson(cols.get(COLUMNS.postCheckbox)?.value ?? null);
+function parseCheckbox(cols: Map<string, RawColumnValue>, colId: string): boolean {
+  const v = parseJson(cols.get(colId)?.value ?? null);
   return v?.checked === true || v?.checked === 'true';
 }
 
 export function parseItem(raw: RawItem): MondayItem {
   const cols = byId(raw);
-  const platforms = parsePlatforms(cols);
+  const platformLabels = parsePlatformLabels(cols);
+  const platforms = platformLabels.filter((l) => KNOWN_PLATFORMS.has(l)) as Platform[];
   const assetIds = parseFiles(cols);
   return {
     id: raw.id,
@@ -95,6 +94,7 @@ export function parseItem(raw: RawItem): MondayItem {
     backlink: parseLink(cols, COLUMNS.backlink),
     platforms,
     platform: platforms[0] ?? null,
+    platformLabels,
     voice: parseVoice(cols),
     creationTrigger: text(cols, COLUMNS.creationTrigger),
     postTrigger: text(cols, COLUMNS.postTrigger),
@@ -104,6 +104,7 @@ export function parseItem(raw: RawItem): MondayItem {
     hasImage: assetIds.length > 0,
     imageAssetIds: assetIds,
     folder: parseLink(cols, COLUMNS.contentFolder),
-    postChecked: parseCheckbox(cols),
+    postChecked: parseCheckbox(cols, COLUMNS.postCheckbox),
+    newsletterUsed: parseCheckbox(cols, COLUMNS.newsletterCheckbox),
   };
 }

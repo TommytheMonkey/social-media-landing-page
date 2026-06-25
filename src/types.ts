@@ -31,6 +31,8 @@ export interface MondayItem {
   platforms: Platform[];
   /** Convenience: the first selected platform, or null. */
   platform: Platform | null;
+  /** ALL raw platform-dropdown labels, including non-social ones (Newsletter/Blog). */
+  platformLabels: string[];
   voice: Voice | null;
   creationTrigger: string | null;
   postTrigger: string | null;
@@ -44,6 +46,8 @@ export interface MondayItem {
   imageAssetIds: string[];
   folder: LinkValue | null;
   postChecked: boolean;
+  /** True when the "Newsletter" checkbox is set (post already used in a newsletter). */
+  newsletterUsed: boolean;
 }
 
 /** One part of a (possibly multi-part) generated post for a single platform. */

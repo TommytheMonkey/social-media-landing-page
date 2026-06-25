@@ -9,7 +9,7 @@ import { COLUMNS, STATUS, POST_TRIGGER } from '../config/board';
 import { resolveChannelId } from '../config/channels';
 import { cv } from '../domain/columnValues';
 import { parseItem, READ_COLUMN_IDS } from '../domain/item';
-import { validateForSend } from '../domain/validation';
+import { validateForSend, isNonSocialPlatform } from '../domain/validation';
 import { reportError, reportValidationFailure } from '../domain/errors';
 import { recordBufferPostId, currentStatus } from '../lib/idempotency';
 import { prepareImageUrl, resolvePostTextFromDoc, wordCount } from './sendShared';
@@ -40,6 +40,12 @@ export async function pollAndPostNow(): Promise<number> {
 
 /** Validate + immediately publish a single item. Returns true if it was sent. */
 export async function postNowItem(item: MondayItem): Promise<boolean> {
+  // Newsletter/Blog items must never go to Buffer (it's social-only). Skip silently.
+  if (isNonSocialPlatform(item)) {
+    log.info('Flow 3 skip — non-social platform', { itemId: item.id, platforms: item.platformLabels });
+    return false;
+  }
+
   const check = validateForSend(item, false);
   if (!check.ok) {
     await reportValidationFailure(item.id, check.missing);

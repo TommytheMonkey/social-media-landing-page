@@ -2,6 +2,12 @@
 // "Error - Check Updates" and posts an update listing exactly what's missing.
 
 import type { MondayItem, ValidationResult } from '../types';
+import { NON_SOCIAL_PLATFORMS } from '../config/board';
+
+/** True if the item targets a non-social platform (Newsletter/Blog) — never send to Buffer. */
+export function isNonSocialPlatform(item: MondayItem): boolean {
+  return item.platformLabels.some((l) => (NON_SOCIAL_PLATFORMS as readonly string[]).includes(l));
+}
 
 /**
  * Validate an item is ready to send to Buffer.

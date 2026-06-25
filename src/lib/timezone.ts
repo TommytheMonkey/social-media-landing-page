@@ -37,3 +37,12 @@ export function todayInEastern(): string {
 export function isBeforeTodayEastern(postDate: string): boolean {
   return postDate < todayInEastern();
 }
+
+/** Date 'YYYY-MM-DD' of the upcoming Monday in ET (next Monday if today is Monday). */
+export function upcomingMonday(): string {
+  const now = DateTime.now().setZone(POST_TIMEZONE);
+  const add = ((1 - now.weekday + 7) % 7) || 7; // luxon: Monday=1 .. Sunday=7
+  const d = now.plus({ days: add }).toISODate();
+  if (!d) throw new Error('Could not compute the upcoming Monday');
+  return d;
+}
