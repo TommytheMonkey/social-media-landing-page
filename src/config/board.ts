@@ -20,7 +20,31 @@ export const COLUMNS = {
   postWordCount: 'numeric_mm4nh9r1', // numbers — word count of the final post (set at Clear!)
   newsletterCheckbox: 'boolean_mm4mh94v', // checkbox — "Newsletter" (set when a post is used in a newsletter)
   newsletterWordCount: 'numeric_mm4n5xpx', // numbers — word count of the assembled newsletter
+  // Flow 6 — post-metrics sync. READ-ONLY from Buffer -> these numeric columns.
+  metricReach: 'numeric_mm4nx20v', // numbers — Reach
+  metricComments: 'numeric_mm4n1bnd', // numbers — Comments
+  metricReactions: 'numeric_mm4nfqmk', // numbers — Reactions (likes/reactions, normalized)
+  metricShares: 'numeric_mm4n3xx3', // numbers — Shares
+  metricSaves: 'numeric_mm4ny7ja', // numbers — Saves (Instagram only; absent for LinkedIn)
+  metricImpressions: 'numeric_mm4nbe6q', // numbers — Impressions
+  metricsSyncedAt: 'text_mm4nmp17', // text — last Buffer metricsUpdatedAt synced (Flow 6 freshness guard)
 } as const;
+
+/**
+ * Flow 6 — Buffer PostMetricType -> Monday numeric column id. Only these six
+ * modern metric types are synced. (Deprecated Buffer types — favorites, retweets,
+ * reblogs, replies, etc. — are intentionally excluded; Buffer removes them 2026-07-31.)
+ * A metric type ABSENT from Buffer's response leaves its column untouched: missing
+ * is unknown, not zero. `saves` is Instagram-only and will simply be absent for LinkedIn.
+ */
+export const METRIC_COLUMNS: Record<string, string> = {
+  reach: COLUMNS.metricReach,
+  comments: COLUMNS.metricComments,
+  reactions: COLUMNS.metricReactions,
+  shares: COLUMNS.metricShares,
+  saves: COLUMNS.metricSaves,
+  impressions: COLUMNS.metricImpressions,
+};
 
 /** Creation Trigger labels. Only "Create Post!" is in scope for phase 1. */
 export const CREATION_TRIGGER = {

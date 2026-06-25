@@ -38,6 +38,13 @@ export function isBeforeTodayEastern(postDate: string): boolean {
   return postDate < todayInEastern();
 }
 
+/** Date 'YYYY-MM-DD' `days` days before today in ET (for the metrics-sync window). */
+export function daysAgoInEastern(days: number): string {
+  const d = DateTime.now().setZone(POST_TIMEZONE).minus({ days }).toISODate();
+  if (!d) throw new Error('Could not compute a past ET date');
+  return d;
+}
+
 /** Date 'YYYY-MM-DD' of the upcoming Monday in ET (next Monday if today is Monday). */
 export function upcomingMonday(): string {
   const now = DateTime.now().setZone(POST_TIMEZONE);

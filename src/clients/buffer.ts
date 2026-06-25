@@ -199,3 +199,71 @@ export async function deletePost(postId: string): Promise<DeleteResult> {
   if (result.__typename === 'DeletePostSuccess') return { deleted: true };
   return { deleted: false, message: result.message ?? result.__typename };
 }
+
+// --- Flow 6: post metrics (READ-ONLY) ----------------------------------------
+// Verified contract (June 2026): `post(input: PostInput!) { id metricsUpdatedAt
+// metrics { type name value unit } }`, PostInput = { id: PostId! }, returns Post!.
+// EXPERIMENTAL surface — field shapes may drift, so parse defensively. Metrics are
+// ingested by Buffer on a ~daily cadence (a fresh post can lag ~24h), and the
+// array only contains metric types the network actually reported (absent != zero).
+
+export interface PostMetric {
+  /** Stable machine key (PostMetricType), e.g. reach | reactions | impressions. */
+  type: string;
+  name: string;
+  value: number;
+  /** count | percentage. */
+  unit: string;
+}
+
+export interface PostMetricsResult {
+  /** ISO timestamp Buffer last refreshed metrics, or null if none yet (skip writes). */
+  metricsUpdatedAt: string | null;
+  /** Only the metric types the network reported. Never synthesized. */
+  metrics: PostMetric[];
+}
+
+/**
+ * Read normalized performance metrics for one published post. Read-only — never
+ * mutates Buffer. Tolerates missing/extra fields and schema drift (keeps only
+ * well-formed numeric metrics); throws only on transport/GraphQL errors so the
+ * caller can skip a single item without aborting the whole sweep.
+ */
+export async function getPostMetrics(postId: string): Promise<PostMetricsResult> {
+  const data = await bufferGql<{
+    post?: {
+      id?: string;
+      metricsUpdatedAt?: string | null;
+      metrics?: Array<{ type?: string; name?: string; value?: number; unit?: string }> | null;
+    } | null;
+  }>(
+    `query ($input: PostInput!) {
+       post(input: $input) {
+         id
+         metricsUpdatedAt
+         metrics { type name value unit }
+       }
+     }`,
+    { input: { id: postId } },
+  );
+
+  const post = data.post ?? null;
+  const rawMetrics = Array.isArray(post?.metrics) ? post!.metrics! : [];
+  const metrics: PostMetric[] = [];
+  for (const m of rawMetrics) {
+    // Drift-tolerant: keep only entries with a usable type + finite numeric value.
+    if (m && typeof m.type === 'string' && typeof m.value === 'number' && Number.isFinite(m.value)) {
+      metrics.push({
+        type: m.type,
+        name: typeof m.name === 'string' ? m.name : m.type,
+        value: m.value,
+        unit: typeof m.unit === 'string' ? m.unit : 'count',
+      });
+    }
+  }
+  const updatedAt =
+    typeof post?.metricsUpdatedAt === 'string' && post.metricsUpdatedAt.length > 0
+      ? post.metricsUpdatedAt
+      : null;
+  return { metricsUpdatedAt: updatedAt, metrics };
+}

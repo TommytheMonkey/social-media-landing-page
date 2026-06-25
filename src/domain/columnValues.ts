@@ -19,6 +19,10 @@ export const cv = {
   longText(text: string) {
     return { text };
   },
+  /** plain text column — the value is the string itself. */
+  text(s: string) {
+    return s;
+  },
   /** link column. */
   link(url: string, text?: string) {
     return { url, text: text ?? url };
