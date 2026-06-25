@@ -210,7 +210,7 @@ export async function getItems(ids: string[], columnIds: string[]): Promise<RawI
 export async function getAssets(assetIds: string[]): Promise<MondayAsset[]> {
   if (assetIds.length === 0) return [];
   const data = await gql<{ assets: MondayAsset[] }>(
-    `query ($ids: [ID!]) { assets(ids: $ids) { id name public_url url } }`,
+    `query ($ids: [ID!]!) { assets(ids: $ids) { id name public_url url } }`,
     { ids: assetIds },
   );
   return data.assets ?? [];
