@@ -1,4 +1,20 @@
 {
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "functions": {
+    "api/**/*.ts": {
+      "maxDuration": 60,
+      "includeFiles": "assets/brand/**"
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/poll",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/nightly",
+      "schedule": "0 5 * * *"
+    }
+  ]
 }

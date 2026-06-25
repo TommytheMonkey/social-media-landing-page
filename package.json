@@ -1,0 +1,27 @@
+{
+  "name": "letsgo-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Takeoff Monkey landing page + content-engine automation (Monday -> Buffer)",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@vercel/blob": "^2.4.1",
+    "googleapis": "^144.0.0",
+    "luxon": "^3.5.0",
+    "openai": "^4.77.0",
+    "sharp": "^0.33.5"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.4.2",
+    "@types/node": "^22.10.0",
+    "@vercel/node": "^5.0.0",
+    "typescript": "^5.7.2"
+  }
+}
