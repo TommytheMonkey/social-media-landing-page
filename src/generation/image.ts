@@ -20,9 +20,12 @@ export async function generatePostImage(
 ): Promise<RenderedImage> {
   const prompt =
     `${imagePrompt}\n\n` +
-    'Photorealistic, natural lighting, authentic commercial sitework/construction scene. ' +
+    'Render EXACTLY the subject, composition, and mood described above. Do NOT substitute a ' +
+    'generic construction/jobsite scene, and do NOT add a person looking at a laptop, phone, ' +
+    'tablet, or blueprints. High-quality, professional, editorial-grade. ' +
     'Absolutely NO text, words, numbers, logos, watermarks, or signage anywhere. ' +
-    'Keep the bottom-right corner relatively clean for a logo overlay.';
+    'Keep the bottom-right corner uncluttered and not pure-white/blown-out, so a small white ' +
+    'logo stays legible when overlaid there.';
 
   const base = await generateBaseImage(prompt);
   const baseImg = sharp(base.bytes);
