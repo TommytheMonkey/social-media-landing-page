@@ -267,3 +267,83 @@ export async function getPostMetrics(postId: string): Promise<PostMetricsResult>
       : null;
   return { metricsUpdatedAt: updatedAt, metrics };
 }
+
+// --- Flow 8: post publish status (READ-ONLY) ---------------------------------
+// Verified contract (June 2026): Post.status is the PostStatus enum
+//   draft | needs_approval | scheduled | sending | sent | error
+// where `sent` = actually published (sentAt is the publish instant, externalLink
+// the live post URL) and `error` = Buffer failed to publish (error.message explains
+// why). Flow 8 uses this to move Monday to match REALITY instead of guessing.
+// Read-only — never mutates Buffer.
+
+/** PostStatus enum values (kept loose as string at the boundary so an unknown
+ *  future value degrades to "still pending" rather than crashing the reconcile). */
+export type BufferPostStatus =
+  | 'draft'
+  | 'needs_approval'
+  | 'scheduled'
+  | 'sending'
+  | 'sent'
+  | 'error';
+
+export interface PostStatusResult {
+  /** Raw PostStatus enum value (e.g. 'sent'). Defaults to 'scheduled' if absent. */
+  status: string;
+  /** ISO publish timestamp once sent, else null. */
+  sentAt: string | null;
+  /** Live post URL once published, else null. */
+  externalLink: string | null;
+  /** Buffer's publishing-error message when status == 'error', else null. */
+  error: string | null;
+}
+
+/**
+ * Read one post's real publish status from Buffer. Read-only. Throws only on
+ * transport/GraphQL errors (caller skips a single item without aborting the sweep);
+ * a missing/unknown status degrades to 'scheduled' so we never mis-flip to Live!.
+ */
+export async function getPostStatus(postId: string): Promise<PostStatusResult> {
+  if (process.env.BUFFER_DRY_RUN === 'true') {
+    // No real post backs a dry-run id — report "still scheduled" so the reconcile
+    // is a clean no-op instead of erroring on a synthetic id.
+    log.warn('BUFFER_DRY_RUN active — skipping Buffer status read', { postId });
+    return { status: 'scheduled', sentAt: null, externalLink: null, error: null };
+  }
+
+  const data = await bufferGql<{
+    post?: {
+      id?: string;
+      status?: string | null;
+      sentAt?: string | null;
+      externalLink?: string | null;
+      error?: { message?: string | null } | null;
+    } | null;
+  }>(
+    `query ($input: PostInput!) {
+       post(input: $input) {
+         id
+         status
+         sentAt
+         externalLink
+         error { message }
+       }
+     }`,
+    { input: { id: postId } },
+  );
+
+  const post = data.post ?? null;
+  // Absent/blank status -> treat as still scheduled (safe: never flips to Live!).
+  const status =
+    typeof post?.status === 'string' && post.status.length > 0 ? post.status : 'scheduled';
+  const sentAt =
+    typeof post?.sentAt === 'string' && post.sentAt.length > 0 ? post.sentAt : null;
+  const externalLink =
+    typeof post?.externalLink === 'string' && post.externalLink.length > 0
+      ? post.externalLink
+      : null;
+  const error =
+    post?.error && typeof post.error.message === 'string' && post.error.message.length > 0
+      ? post.error.message
+      : null;
+  return { status, sentAt, externalLink, error };
+}

@@ -2,7 +2,9 @@
 // reconciliation only. The 5-min poll owns the send/cancel flows; the sweep does
 // NOT re-invoke them (that previously collided with the poll), it only:
 //  1. Past Due: Post Date < today and never cleared -> Status "Past Due!".
-//  2. Reconcile: "Scheduled!" items whose Post Date has passed -> "Live!".
+//  2. Reconcile: backstop the poll's Flow 8 — confirm "Scheduled!" items against
+//     Buffer's real status (sent -> "Live!", error -> "Error"); catches anything
+//     the 5-min poll missed while down.
 //  3. Junk: Post Trigger == "Junk" -> (cancel any queued post, then) move to Garbage.
 
 import * as monday from '../clients/monday';
@@ -11,6 +13,7 @@ import { COLUMNS, STATUS, POST_TRIGGER, GARBAGE_GROUP_TITLE } from '../config/bo
 import { cv } from '../domain/columnValues';
 import { parseItem, READ_COLUMN_IDS } from '../domain/item';
 import { reportError } from '../domain/errors';
+import { reconcilePublishedItem } from './reconcilePublished';
 import { findBufferPostId } from '../lib/idempotency';
 import { isBeforeTodayEastern } from '../lib/timezone';
 import { log } from '../lib/logger';
@@ -43,27 +46,20 @@ export async function runNightly(): Promise<NightlySummary> {
     }
   }
 
-  // 2. Reconcile scheduled posts whose date has passed.
-  // NOTE: Buffer has no verified "get post status" query yet, so we mark Live!
-  // optimistically (Buffer accepted the scheduled post). Wire a real confirmation
-  // here once the Buffer read query is verified.
+  // 2. Reconcile scheduled posts against Buffer's REAL status (backstop for the
+  // 5-min poll's Flow 8). No date gate — Buffer's status decides, not the calendar:
+  // a "sent" post becomes Live! and a failed publish becomes Error, regardless of
+  // Post Date. Posts Buffer still has queued stay Scheduled!.
   const scheduled = await monday.findItemsByStatus(
     [{ columnId: COLUMNS.status, label: STATUS.scheduled }],
     READ_COLUMN_IDS,
   );
   for (const raw of scheduled) {
     const item = parseItem(raw);
-    if (item.postDate && isBeforeTodayEastern(item.postDate)) {
-      try {
-        await monday.updateColumns(item.id, { [COLUMNS.status]: cv.status(STATUS.live) });
-        await monday.createUpdate(
-          item.id,
-          'ℹ️ Marked Live! by nightly reconcile (Post Date passed; Buffer confirmation not yet wired).',
-        );
-        summary.reconciled++;
-      } catch (err) {
-        await reportError(item.id, 'Flow 4 reconcile failed', err);
-      }
+    try {
+      if ((await reconcilePublishedItem(item)) === 'live') summary.reconciled++;
+    } catch (err) {
+      await reportError(item.id, 'Flow 4 reconcile failed', err);
     }
   }
 
