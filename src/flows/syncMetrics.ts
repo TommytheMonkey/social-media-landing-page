@@ -75,7 +75,7 @@ export async function runMetricsSync(): Promise<MetricsSyncSummary> {
 
     summary.candidates++;
 
-    const postId = await findBufferPostId(item.id);
+    const postId = await findBufferPostId(item.id, item.bufferPostId);
     if (!postId) {
       summary.skippedNoId++;
       log.info('Flow 6: no Buffer post id on item — skipping', { itemId: item.id, name: item.name });

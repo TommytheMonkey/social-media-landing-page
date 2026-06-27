@@ -78,7 +78,7 @@ export async function cancelItem(item: MondayItem): Promise<boolean> {
 
   // Scheduled — remove it from Buffer's queue before it publishes.
   if (status === STATUS.scheduled) {
-    const postId = await findBufferPostId(item.id);
+    const postId = await findBufferPostId(item.id, item.bufferPostId);
     if (!postId) {
       await monday.updateColumns(item.id, { [COLUMNS.status]: cv.status(STATUS.error), ...clearTrigger });
       await monday.createUpdate(

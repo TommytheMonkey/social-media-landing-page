@@ -79,7 +79,7 @@ export async function runNightly(): Promise<NightlySummary> {
         const item = parseItem(raw);
         try {
           if (item.status === STATUS.scheduled) {
-            const postId = await findBufferPostId(item.id);
+            const postId = await findBufferPostId(item.id, item.bufferPostId);
             if (postId) {
               const res = await deletePost(postId);
               log.info('Flow 4 junk: removed queued Buffer post', { itemId: item.id, postId, deleted: res.deleted });

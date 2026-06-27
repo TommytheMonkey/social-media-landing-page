@@ -54,6 +54,8 @@ export interface MondayItem {
   useMyCopy: boolean;
   /** Monday asset IDs in the Attachment file column (a file to host + link in the post). */
   attachmentAssetIds: string[];
+  /** Buffer post id the engine recorded on send (column), or null if not sent / pre-column item. */
+  bufferPostId: string | null;
 }
 
 /** One part of a (possibly multi-part) generated post for a single platform. */

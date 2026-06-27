@@ -59,7 +59,7 @@ export async function reconcilePublishedItem(item: MondayItem): Promise<Reconcil
     return 'pending';
   }
 
-  const postId = await findBufferPostId(item.id);
+  const postId = await findBufferPostId(item.id, item.bufferPostId);
   if (!postId) {
     log.info('Flow 8: no Buffer post id on Scheduled! item — skipping', {
       itemId: item.id,
