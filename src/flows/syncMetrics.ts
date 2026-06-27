@@ -9,7 +9,7 @@
 //
 // Selection (ALL must hold): Status == "Live!", Platform in (LinkedIn|Instagram),
 // a stored Buffer post id exists (from Flow 2/3), and Post Date is within the last
-// 7 days. Older Live posts age out and stop being refreshed — the stop condition.
+// 30 days. Older Live posts age out and stop being refreshed — the stop condition.
 //
 // MISSING != ZERO: a metric type absent from Buffer's array is unknown, not zero —
 // its column is left as-is. FRESHNESS: metrics lag ~24h and climb over the window;
@@ -25,7 +25,7 @@ import { daysAgoInEastern } from '../lib/timezone';
 import { log } from '../lib/logger';
 
 /** Posts older than this (by Post Date) age out of the refresh window. */
-const WINDOW_DAYS = 7;
+const WINDOW_DAYS = 30;
 
 /** Columns to read for selection — board fields + the freshness marker. */
 const COLS = [...READ_COLUMN_IDS, COLUMNS.metricsSyncedAt];

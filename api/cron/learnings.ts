@@ -1,6 +1,6 @@
 // Cron/learnings entry — runs Flow 7 (weekly learnings digest). Scheduled 04:30 UTC
 // on Mondays = Sunday 23:30 EST / Monday 00:30 EDT — i.e. late Sunday ET, after the
-// week's posts have had time to accrue metrics (Flow 6 refreshes for 7 days). Vercel
+// week's posts have had time to accrue metrics (Flow 6 refreshes for 30 days). Vercel
 // crons are UTC-only, so this is the fixed-UTC stand-in for "Sunday night ET".
 
 import type { VercelRequest, VercelResponse } from '@vercel/node';
