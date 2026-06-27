@@ -15,11 +15,13 @@ const PLATFORM_RULES: Record<Platform, string> = {
   LinkedIn:
     'LinkedIn: pain-first hook; 2–3 concrete teaching steps with a real named tool; ' +
     'an honest limitation; one engagement question; 3–4 hashtags; newsletter CTA; ' +
-    'sign-off "— Tommy, Takeoff Monkey". Medium length, teach-a-peer tone.',
+    'sign-off "— Tommy, Takeoff Monkey". Medium length, teach-a-peer tone. ' +
+    'HARD LIMIT: the whole post MUST stay under 3000 characters (aim ~1300–1900).',
   Instagram:
     'Instagram: tighter and punchier, scroll-stopping; scannable lines (emoji bullets ok); ' +
     'the win in a few lines then the honest limit in one; 1–2 hashtags + 🍌; newsletter CTA; ' +
-    'sign-off "— Tommy, Takeoff Monkey". Short.',
+    'sign-off "— Tommy, Takeoff Monkey". Short. ' +
+    'HARD LIMIT: the whole caption MUST stay under 2200 characters (aim ~600–1100).',
 };
 
 // Flat schema (top-level string fields). A nested array caused Claude to

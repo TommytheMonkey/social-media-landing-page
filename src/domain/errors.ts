@@ -29,7 +29,7 @@ export async function reportError(itemId: string, context: string, err: unknown)
 export async function reportValidationFailure(itemId: string, missing: string[]): Promise<void> {
   log.warn('validation failed', { itemId, missing });
   const body =
-    `⚠️ Can't send yet — missing required field(s):\n` +
+    `⚠️ Can't send yet:\n` +
     missing.map((m) => `• ${m}`).join('\n');
   try {
     await monday.updateColumns(itemId, { [COLUMNS.status]: cv.status(STATUS.error) });
