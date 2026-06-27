@@ -16,7 +16,16 @@ import * as monday from '../clients/monday';
 import type { RawItem } from '../clients/monday';
 import * as google from '../clients/google';
 import { generateLearnings, type LearningsProse } from '../generation/learnings';
-import { COLUMNS, STATUS } from '../config/board';
+import {
+  buildReportHtml,
+  type ReportData,
+  type WeeklyPoint,
+  type DimensionChart,
+  type CohortBar,
+  type TopPost,
+} from '../generation/reportEmail';
+import { COLUMNS, STATUS, BOARD_ID } from '../config/board';
+import { REPORT_RECIPIENTS, REPORT_SENDER, REPORT_FROM_NAME, TREND_WEEKS } from '../config/report';
 import {
   SOCIAL_ROOT_FOLDER_ID,
   LEARNINGS_FOLDER_SEGMENTS,
@@ -73,6 +82,8 @@ export interface LearningsSummary {
   thisWeek: number;
   dimensions: Array<{ dimension: string; cohorts: number }>;
   docUrl: string;
+  /** Whether the weekly marketing-report email was sent this run. */
+  emailSent: boolean;
 }
 
 /** Collapse Voice -> POV cohort. TBD/Other/unknown -> null (excluded from POV). */
@@ -125,6 +136,42 @@ function groupBy(posts: PostRow[], keyFn: (p: PostRow) => string | null): Map<st
     else m.set(k, [p]);
   }
   return m;
+}
+
+/** Composite engagement = reactions + comments + shares + saves (present only). */
+const ENGAGEMENT_KEYS = ['reactions', 'comments', 'shares', 'saves'] as const;
+function engagementOf(m: Record<string, number | null>): { value: number; has: boolean } {
+  let value = 0;
+  let has = false;
+  for (const k of ENGAGEMENT_KEYS) {
+    const v = m[k];
+    if (v != null) {
+      value += v;
+      has = true;
+    }
+  }
+  return { value, has };
+}
+
+/** Aggregate engagement + reach per ISO week (Mon-start), trailing `weeks`. */
+function buildWeekly(posts: PostRow[], weeks: number): WeeklyPoint[] {
+  const byWeek = new Map<string, { iso: string; label: string; eng: number; reach: number; posts: number }>();
+  for (const p of posts) {
+    const dt = DateTime.fromISO(p.postDate);
+    if (!dt.isValid) continue;
+    const start = dt.startOf('week');
+    const iso = start.toISODate()!;
+    const b = byWeek.get(iso) ?? { iso, label: start.toFormat('MMM d'), eng: 0, reach: 0, posts: 0 };
+    const e = engagementOf(p.metrics);
+    if (e.has) b.eng += e.value;
+    if (p.metrics.reach != null) b.reach += p.metrics.reach;
+    b.posts += 1;
+    byWeek.set(iso, b);
+  }
+  return [...byWeek.values()]
+    .sort((a, b) => a.iso.localeCompare(b.iso))
+    .slice(-weeks)
+    .map((b) => ({ week: b.label, engagement: Math.round(b.eng), reach: Math.round(b.reach), posts: b.posts }));
 }
 
 const OTHER_ATTRS: Array<{ label: string; fn: (p: PostRow) => string | null }> = [
@@ -242,6 +289,75 @@ export async function runLearningsDigest(): Promise<LearningsSummary> {
   ];
   const thisWeekCount = rows.filter((p) => p.thisWeek).length;
 
+  // --- Report data (KPIs, week-over-week, dimension charts, top/bottom) --------
+  // "This week" vs the prior 7-day window (adjacent), by Post Date.
+  const lastWeekEnd = daysAgoInEastern(WEEK_WINDOW_DAYS); // 7 days ago
+  const lastWeekStart = daysAgoInEastern(2 * WEEK_WINDOW_DAYS - 1); // 13 days ago
+  const sums = (filter: (p: PostRow) => boolean) => {
+    let reach = 0;
+    let impressions = 0;
+    let engagement = 0;
+    let posts = 0;
+    for (const p of rows) {
+      if (!filter(p)) continue;
+      posts++;
+      if (p.metrics.reach != null) reach += p.metrics.reach;
+      if (p.metrics.impressions != null) impressions += p.metrics.impressions;
+      const e = engagementOf(p.metrics);
+      if (e.has) engagement += e.value;
+    }
+    return { reach, impressions, engagement, posts };
+  };
+  const tw = sums((p) => p.thisWeek);
+  const lw = sums((p) => p.postDate >= lastWeekStart && p.postDate <= lastWeekEnd);
+  const pct = (cur: number, prev: number): number | null => (prev > 0 ? round1(((cur - prev) / prev) * 100) : null);
+
+  const dimChart = (label: string, keyFn: (p: PostRow) => string | null): DimensionChart => {
+    const cohorts: CohortBar[] = [];
+    for (const [name, ps] of groupBy(rows, keyFn)) {
+      const vals = ps.map((p) => engagementOf(p.metrics)).filter((e) => e.has).map((e) => e.value);
+      if (vals.length) cohorts.push({ name, n: vals.length, avgEngagement: round1(mean(vals)!) });
+    }
+    cohorts.sort((a, b) => b.avgEngagement - a.avgEngagement);
+    return { label, cohorts };
+  };
+
+  const ranked = rows
+    .map((p) => ({ p, e: engagementOf(p.metrics) }))
+    .filter((x) => x.e.has)
+    .sort((a, b) => b.e.value - a.e.value);
+  const toTop = (x: { p: PostRow; e: { value: number } }): TopPost => ({
+    name: x.p.name,
+    platform: x.p.platform,
+    engagement: x.e.value,
+    reach: x.p.metrics.reach ?? null,
+  });
+
+  const reportData: ReportData = {
+    kpis: {
+      weekEnding: today,
+      posts: tw.posts,
+      reach: tw.reach,
+      impressions: tw.impressions,
+      engagement: tw.engagement,
+      deltas: {
+        reach: pct(tw.reach, lw.reach),
+        impressions: pct(tw.impressions, lw.impressions),
+        engagement: pct(tw.engagement, lw.engagement),
+      },
+    },
+    weekly: buildWeekly(rows, TREND_WEEKS),
+    dimensionCharts: [
+      dimChart('POV', (p) => p.pov),
+      dimChart('Post Type', (p) => p.postType),
+      dimChart('Day of Week', (p) => p.dayOfWeek),
+    ],
+    topPosts: ranked.slice(0, 3).map(toTop),
+    bottomPosts: ranked.length > 3 ? ranked.slice(-3).reverse().map(toTop) : [],
+    docUrl: '', // filled in after the doc is resolved below
+    boardUrl: process.env.MONDAY_BOARD_URL || `https://monday.com/boards/${BOARD_ID}`,
+  };
+
   // Ensure the rolling doc exists; read prior content (newest-first) BEFORE writing.
   const folder = await google.ensureFolderPath(SOCIAL_ROOT_FOLDER_ID, LEARNINGS_FOLDER_SEGMENTS);
   let docId = await google.findDocByName(folder.id, LEARNINGS_DOC_NAME);
@@ -252,14 +368,17 @@ export async function runLearningsDigest(): Promise<LearningsSummary> {
     docId = (await google.createDoc(folder.id, LEARNINGS_DOC_NAME, '')).id;
   }
   const docUrl = `https://docs.google.com/document/d/${docId}/edit`;
+  reportData.docUrl = docUrl;
 
   // Prose interpretation (the model narrates the computed numbers; it never sources
   // figures). On any failure we still write the deterministic tables.
   let prose: LearningsProse;
   if (rows.length === 0) {
     prose = {
+      execSummary: 'No Live LinkedIn/Instagram posts with metrics yet — nothing to analyze.',
       whatsWorking: 'No Live LinkedIn/Instagram posts with metrics yet — nothing to analyze.',
-      candidateLearnings: [],
+      proposedStyleGuideEdits: [],
+      humanDecisions: [],
       multiWeekPatterns: 'Not enough history yet.',
     };
   } else {
@@ -277,38 +396,65 @@ export async function runLearningsDigest(): Promise<LearningsSummary> {
         error: err instanceof Error ? err.message : String(err),
       });
       prose = {
+        execSummary: '(Interpretation unavailable this run — see the cohort tables for the raw numbers.)',
         whatsWorking: '(Interpretation unavailable this run — see the cohort tables above for the raw numbers.)',
-        candidateLearnings: [],
+        proposedStyleGuideEdits: [],
+        humanDecisions: [],
         multiWeekPatterns: 'Not enough history yet.',
       };
     }
   }
 
   const sep = '\n' + '─'.repeat(60) + '\n\n';
+  const renderEdits = prose.proposedStyleGuideEdits.length
+    ? prose.proposedStyleGuideEdits.map((e) => `  • ${e.title}: "${e.edit}" — ${e.rationale}`).join('\n')
+    : '  • (nothing clears even a directional bar yet)';
+  const renderDecisions = prose.humanDecisions.length
+    ? prose.humanDecisions.map((d) => `  • [${d.area}] ${d.recommendation} — ${d.rationale}`).join('\n')
+    : '  • (none this week)';
   const section =
     `=== Performance Learnings — week ending ${today} (generated ${today}) ===\n` +
     `[ADVISORY · machine-generated. Read-only signal for humans. Does NOT modify the style guide, voice profile, or any post. The style guide remains authoritative on voice — treat everything below as suggestions for human review.]\n\n` +
+    `Summary: ${prose.execSummary}\n\n` +
     renderThisWeek(rows) +
     '\n' +
     `Cohort comparisons across all ${rows.length} Live LinkedIn/Instagram post(s) — any cohort below n=${MIN_COHORT_N} is directional only, not a conclusion:\n` +
     dimensions.map(renderDimension).join('\n') +
     '\n' +
     `What's working (interpretation):\n${prose.whatsWorking}\n\n` +
-    `Candidate learnings (for human review — NOT auto-applied):\n` +
-    (prose.candidateLearnings.length
-      ? prose.candidateLearnings.map((l) => `  • ${l}`).join('\n')
-      : '  • (nothing clears even a directional bar yet)') +
-    '\n\n' +
+    `Proposed style-guide edits (advisory — apply by hand, NOT auto-applied):\n${renderEdits}\n\n` +
+    `Founder decisions (out of the system's lane):\n${renderDecisions}\n\n` +
     `Multi-week patterns:\n${prose.multiWeekPatterns}\n` +
     sep;
 
   await google.prependToDoc(docId, section);
+
+  // Email the marketing report to the founders (best-effort: a send failure must
+  // not fail the digest, which is already written to the doc).
+  let emailSent = false;
+  try {
+    const html = buildReportHtml(reportData, prose);
+    await google.sendHtmlEmail({
+      sender: REPORT_SENDER,
+      to: REPORT_RECIPIENTS,
+      subject: `📊 Social Marketing Report — week ending ${today}`,
+      html,
+      fromName: REPORT_FROM_NAME,
+    });
+    emailSent = true;
+    log.info('Flow 7: report email sent', { to: REPORT_RECIPIENTS });
+  } catch (err) {
+    log.error('Flow 7: report email failed (digest still written)', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 
   const summary: LearningsSummary = {
     livePosts: rows.length,
     thisWeek: thisWeekCount,
     dimensions: dimensions.map((d) => ({ dimension: d.dimension, cohorts: d.cohorts.length })),
     docUrl,
+    emailSent,
   };
   log.info('Flow 7 learnings digest complete', { ...summary });
   return summary;
