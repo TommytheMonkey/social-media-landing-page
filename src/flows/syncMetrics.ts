@@ -111,7 +111,7 @@ export async function runMetricsSync(): Promise<MetricsSyncSummary> {
     const values: Record<string, unknown> = {};
     const wrote: string[] = [];
     for (const m of result.metrics) {
-      if (!Object.prototype.hasOwnProperty.call(METRIC_COLUMNS, m.type)) continue; // untracked (views/clicks/etc.)
+      if (!Object.prototype.hasOwnProperty.call(METRIC_COLUMNS, m.type)) continue; // untracked (engagementRate/follows/clicks/etc.)
       const col = METRIC_COLUMNS[m.type];
       if (!col) {
         // Configured-but-blank column id: honor "log a clear error and skip; never guess."
