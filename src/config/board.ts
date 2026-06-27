@@ -1,6 +1,8 @@
 // Monday board map — single source of truth for IDs and label values.
 // Board: "Social Media" content pipeline.
 
+import type { Platform } from '../types';
+
 export const BOARD_ID = '18411954205';
 
 /** Column IDs, keyed by their role in the app. */
@@ -91,6 +93,16 @@ export const PLATFORM = {
   linkedin: 'LinkedIn',
   instagram: 'Instagram',
 } as const;
+
+/**
+ * Hard per-platform character limit on post text. Buffer/the network REJECT a
+ * post over this (LinkedIn: 3000; Instagram caption: 2200), so generation aims
+ * under it and the send flows hard-check the resolved Doc text before calling Buffer.
+ */
+export const PLATFORM_CHAR_LIMIT: Record<Platform, number> = {
+  LinkedIn: 3000,
+  Instagram: 2200,
+};
 
 /** Non-social Platform labels — these must NEVER be sent to Buffer. */
 export const NON_SOCIAL_PLATFORMS = ['Newsletter', 'Blog'] as const;

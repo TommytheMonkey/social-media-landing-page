@@ -9,7 +9,7 @@ import { COLUMNS, STATUS, POST_TRIGGER } from '../config/board';
 import { resolveChannelId } from '../config/channels';
 import { cv } from '../domain/columnValues';
 import { parseItem, READ_COLUMN_IDS } from '../domain/item';
-import { validateForSend, isNonSocialPlatform } from '../domain/validation';
+import { validateForSend, validateTextLength, isNonSocialPlatform } from '../domain/validation';
 import { reportError, reportValidationFailure } from '../domain/errors';
 import { recordBufferPostId, currentStatus } from '../lib/idempotency';
 import { scheduledUtcISO } from '../lib/timezone';
@@ -70,6 +70,15 @@ export async function scheduleItem(item: MondayItem): Promise<boolean> {
   // Snapshot the (possibly edited) Google Doc text into long-text + word-count,
   // and use it as the post body. Throws (-> reportError) if the Doc is missing/empty.
   const text = await resolvePostTextFromDoc(item);
+
+  // Hard length gate BEFORE the non-idempotent send: a post over the platform's
+  // limit fails clearly here instead of as a cryptic Buffer "Invalid post" reject.
+  const lengthCheck = validateTextLength(text, platform);
+  if (!lengthCheck.ok) {
+    await reportValidationFailure(item.id, lengthCheck.missing);
+    return false;
+  }
+
   await monday.updateColumns(item.id, {
     [COLUMNS.contentText]: cv.longText(text),
     [COLUMNS.postWordCount]: cv.number(wordCount(text)),
