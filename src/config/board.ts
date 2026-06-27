@@ -35,11 +35,16 @@ export const COLUMNS = {
 } as const;
 
 /**
- * Flow 6 — Buffer PostMetricType -> Monday numeric column id. Only these six
- * modern metric types are synced. (Deprecated Buffer types — favorites, retweets,
- * reblogs, replies, etc. — are intentionally excluded; Buffer removes them 2026-07-31.)
- * A metric type ABSENT from Buffer's response leaves its column untouched: missing
- * is unknown, not zero. `saves` is Instagram-only and will simply be absent for LinkedIn.
+ * Flow 6 — Buffer PostMetricType -> Monday numeric column id. (Deprecated Buffer
+ * types — favorites, retweets, reblogs, replies, etc. — are intentionally excluded;
+ * Buffer removes them 2026-07-31.) A metric type ABSENT from Buffer's response leaves
+ * its column untouched: missing is unknown, not zero. `saves` is Instagram-only and
+ * will simply be absent for LinkedIn.
+ *
+ * IMPRESSIONS vs VIEWS: LinkedIn reports `impressions`; Instagram reports `views`
+ * (Meta's rename) and never `impressions`. Both feed the same Impressions column —
+ * a single post only ever carries one of the two, so they never collide. (IG also
+ * reports `follows`, which has no column yet and is dropped.)
  */
 export const METRIC_COLUMNS: Record<string, string> = {
   reach: COLUMNS.metricReach,
@@ -48,6 +53,7 @@ export const METRIC_COLUMNS: Record<string, string> = {
   shares: COLUMNS.metricShares,
   saves: COLUMNS.metricSaves,
   impressions: COLUMNS.metricImpressions,
+  views: COLUMNS.metricImpressions, // Instagram's impressions-equivalent
 };
 
 /** Creation Trigger labels. Only "Create Post!" is in scope for phase 1. */
