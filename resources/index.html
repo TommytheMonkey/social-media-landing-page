@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Takeoff Monkey — Resource Hub</title>
+<meta name="description" content="The Takeoff Monkey resource hub: field guides, tool spotlights, the weekly newsletter, and the tech plays that help sitework contractors run a tighter shop." />
+
+<!-- Open Graph / social preview -->
+<meta property="og:title" content="Takeoff Monkey — Resource Hub" />
+<meta property="og:description" content="Field guides, tool spotlights, and the weekly newsletter. Real tech plays for commercial sitework contractors — no hype, no guilt." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://letsgo.takeo.co/resources" />
+
+<!-- ========================================================= -->
+<!--  CONFIG — EDIT THESE VALUES, THEN DEPLOY                   -->
+<!--  All live in the <script id="config"> block near the     -->
+<!--  bottom. The RESOURCES array drives the whole grid, so    -->
+<!--  adding a new guide/spotlight = one new object there.     -->
+<!-- ========================================================= -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+<style>
+  :root{
+    --jungle:#00391F;
+    --jungle-deep:#002414;
+    --jungle-line:#0c4a2c;
+    --banana:#F5ED60;
+    --banana-deep:#e4dc44;
+    --concrete:#F1F2F2;
+    --black:#231F20;
+    --white:#ffffff;
+    --maxw:760px;
+    --radius:14px;
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Montserrat',system-ui,sans-serif;
+    background:var(--jungle);
+    color:var(--white);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  a{color:inherit}
+
+  .wrap{
+    max-width:var(--maxw);
+    margin:0 auto;
+    padding:0 22px;
+    position:relative;
+    z-index:2;
+  }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    position:relative;
+    padding:40px 0 34px;
+    overflow:hidden;
+    background:
+      radial-gradient(120% 80% at 50% -10%, #064d2c 0%, var(--jungle) 55%, var(--jungle-deep) 100%);
+  }
+  /* signature: banana spiral bleeding off the corner — carried over from letsgo */
+  .spiral{
+    position:absolute;
+    right:-130px;
+    bottom:-150px;
+    width:420px;
+    height:420px;
+    opacity:.16;
+    z-index:0;
+    pointer-events:none;
+    animation:spin 90s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @media (prefers-reduced-motion:reduce){.spiral{animation:none}}
+
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;gap:16px;
+    margin-bottom:34px;
+  }
+  .topbar img{height:60px;width:auto;display:block}
+  .back-link{
+    font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+    color:#cde0d4;text-decoration:none;white-space:nowrap;
+    border:1.5px solid var(--jungle-line);border-radius:8px;
+    padding:9px 13px;transition:border-color .15s,color .15s;
+  }
+  .back-link:hover{border-color:var(--banana);color:var(--banana)}
+
+  .eyebrow{
+    font-weight:700;
+    font-size:12px;
+    letter-spacing:.18em;
+    text-transform:uppercase;
+    color:var(--banana);
+    margin-bottom:16px;
+  }
+  h1{
+    font-weight:800;
+    font-size:clamp(31px,8vw,50px);
+    line-height:1.02;
+    letter-spacing:-.01em;
+    text-transform:uppercase;
+  }
+  h1 .pop{
+    color:var(--jungle);
+    background:var(--banana);
+    padding:0 .12em;
+    box-decoration-break:clone;
+    -webkit-box-decoration-break:clone;
+  }
+  .sub{
+    font-size:clamp(15px,4vw,17px);
+    color:#cfe3d6;
+    max-width:540px;
+    margin:18px 0 0;
+    font-weight:500;
+  }
+
+  /* ---------- FILTER BAR ---------- */
+  .filters{
+    display:flex;flex-wrap:wrap;gap:9px;
+    margin-top:26px;
+  }
+  .chip{
+    font-family:inherit;font-weight:700;font-size:12px;
+    letter-spacing:.05em;text-transform:uppercase;
+    color:#cde0d4;background:transparent;cursor:pointer;
+    border:1.5px solid var(--jungle-line);border-radius:999px;
+    padding:9px 15px;transition:all .14s ease;
+  }
+  .chip:hover{border-color:#1c6b40;color:var(--white)}
+  .chip[aria-pressed="true"]{
+    background:var(--banana);border-color:var(--banana);color:var(--jungle);
+  }
+
+  /* ---------- RESOURCE GRID ---------- */
+  .stack{padding:28px 0 20px}
+  .count{
+    font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    color:#7c9888;margin-bottom:16px;
+  }
+  .grid{display:grid;gap:16px}
+  @media (min-width:620px){.grid{grid-template-columns:1fr 1fr}}
+
+  .res{
+    background:var(--concrete);
+    color:var(--black);
+    border-radius:var(--radius);
+    padding:22px 20px 20px;
+    box-shadow:0 10px 30px rgba(0,0,0,.22);
+    display:flex;flex-direction:column;
+    text-decoration:none;
+    position:relative;
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .res:hover{transform:translateY(-3px);box-shadow:0 16px 38px rgba(0,0,0,.30)}
+  .res:focus-visible{outline:3px solid var(--banana);outline-offset:3px}
+
+  .res-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .tag{
+    display:inline-flex;align-items:center;
+    font-weight:800;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+    color:var(--jungle);background:var(--banana);
+    padding:5px 9px;border-radius:6px;
+  }
+  .meta{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:#7e8c84}
+
+  .res h2{
+    font-weight:800;font-size:19px;line-height:1.15;letter-spacing:-.01em;
+    text-transform:uppercase;margin-bottom:7px;color:var(--black);
+  }
+  .res p{font-size:14px;color:#41524a;font-weight:500;flex:1}
+  .res .go{
+    margin-top:16px;font-weight:800;font-size:13px;letter-spacing:.04em;
+    text-transform:uppercase;color:var(--jungle);
+    display:inline-flex;align-items:center;gap:7px;
+  }
+  .res .go .arr{transition:transform .14s ease}
+  .res:hover .go .arr{transform:translateX(4px)}
+
+  /* "fresh" flag on the newest drop */
+  .res.fresh::before{
+    content:"🍌 New";
+    position:absolute;top:-9px;right:14px;
+    font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--jungle);background:var(--banana);
+    padding:4px 9px;border-radius:999px;
+    box-shadow:0 4px 12px rgba(0,0,0,.25);
+  }
+
+  .empty{
+    grid-column:1/-1;text-align:center;padding:40px 0;
+    color:#9fb6a8;font-weight:600;
+  }
+
+  /* ---------- NEWSLETTER CARD ---------- */
+  .news-card{
+    background:var(--jungle-deep);
+    border:1px solid var(--jungle-line);
+    border-radius:var(--radius);
+    padding:26px 22px;
+    margin-top:30px;
+  }
+  .label{
+    display:inline-flex;align-items:center;gap:8px;
+    font-weight:800;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--jungle-deep);background:var(--banana);
+    padding:5px 10px;border-radius:6px;margin-bottom:14px;
+  }
+  .news-card h2{font-weight:800;font-size:23px;text-transform:uppercase;letter-spacing:-.01em;margin-bottom:6px}
+  .news-card .kick{font-size:14.5px;color:#bcd2c4;font-weight:500;max-width:480px}
+
+  form{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap}
+  .field{flex:1;min-width:200px}
+  .field input{
+    width:100%;font-family:inherit;font-size:16px;font-weight:500;
+    padding:13px 14px;border-radius:10px;
+    border:1.5px solid var(--jungle-line);background:#06311c;color:var(--white);
+    transition:border-color .15s,box-shadow .15s;
+  }
+  .field input::placeholder{color:#6f8b7c}
+  .field input:focus{
+    outline:none;border-color:var(--banana);
+    box-shadow:0 0 0 3px rgba(245,237,96,.25);
+  }
+  .btn{
+    font-family:inherit;font-weight:800;font-size:15px;
+    text-transform:uppercase;letter-spacing:.04em;
+    border:none;border-radius:10px;cursor:pointer;
+    padding:14px 20px;
+    display:inline-flex;align-items:center;justify-content:center;gap:9px;
+    background:var(--banana);color:var(--jungle);
+    transition:transform .08s ease, filter .15s ease;
+    white-space:nowrap;
+  }
+  .btn:hover{filter:brightness(1.04)}
+  .btn:active{transform:translateY(1px)}
+  .btn:disabled{opacity:.6;cursor:default}
+  .form-note{font-size:12px;color:#8aa597;margin-top:10px;width:100%}
+  .err-msg{display:none;color:#ffb4a8;font-size:13px;margin-top:8px;font-weight:600;width:100%}
+  .err-msg.show{display:block}
+
+  .success{display:none;text-align:center;padding:6px 0 2px}
+  .success.show{display:block;animation:fade .4s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .success .check{
+    width:52px;height:52px;border-radius:50%;
+    background:var(--banana);color:var(--jungle);
+    display:flex;align-items:center;justify-content:center;
+    font-size:26px;font-weight:800;margin:0 auto 12px;
+  }
+  .success h3{font-size:19px;font-weight:800;text-transform:uppercase;margin-bottom:6px}
+  .success p{font-size:14px;color:#cde0d4}
+
+  /* ---------- SOCIAL ROW ---------- */
+  .social{
+    display:grid;gap:12px;margin-top:30px;
+  }
+  @media (min-width:620px){.social{grid-template-columns:1fr 1fr}}
+  .social a{
+    display:flex;align-items:center;gap:12px;
+    background:var(--jungle-deep);border:1.5px solid var(--jungle-line);
+    border-radius:12px;padding:15px 16px;text-decoration:none;
+    font-weight:700;font-size:14px;
+    transition:border-color .15s,transform .1s;
+  }
+  .social a:hover{border-color:var(--banana);transform:translateY(-2px)}
+  .social .ico{
+    width:34px;height:34px;flex:0 0 34px;border-radius:8px;
+    background:var(--banana);color:var(--jungle);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:15px;
+  }
+  .social .s-sub{display:block;font-size:11.5px;font-weight:600;color:#9fb6a8;margin-top:1px}
+
+  /* ---------- FOOTER ---------- */
+  footer{
+    text-align:center;padding:38px 0 46px;margin-top:34px;
+    border-top:1px solid var(--jungle-line);
+  }
+  footer img{height:42px;opacity:.85;margin-bottom:14px}
+  footer p{font-size:12px;color:#7c9888;line-height:1.7}
+  footer a{color:var(--banana);text-decoration:underline;text-underline-offset:2px}
+
+  @media (max-width:380px){
+    .topbar img{height:50px}
+    .topbar{margin-bottom:26px}
+  }
+</style>
+</head>
+<body>
+
+  <!-- ===================== HERO ===================== -->
+  <header class="hero">
+    <svg class="spiral" viewBox="0 0 200 200" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+      <path fill="none" stroke="#F5ED60" stroke-width="9" stroke-linecap="round"
+        d="M100 100
+           m0 0
+           a8 8 0 1 1 8 8
+           a20 20 0 1 1 -20 -20
+           a34 34 0 1 1 34 34
+           a48 48 0 1 1 -48 -48
+           a62 62 0 1 1 62 62
+           a76 76 0 1 1 -76 -76
+           a90 90 0 1 1 90 90" />
+    </svg>
+
+    <div class="wrap">
+      <div class="topbar">
+        <img src="/assets/tkm_white.png" alt="Takeoff Monkey" />
+        <a class="back-link" href="https://letsgo.takeo.co">← Back to start</a>
+      </div>
+
+      <p class="eyebrow">The resource hub</p>
+      <h1>Everything we know, in <span class="pop">one place</span>.</h1>
+      <p class="sub">Field guides, tool breakdowns, and the weekly drop — the real tech plays that help sitework contractors run a tighter shop. No hype, no guilt, just what works.</p>
+
+      <!-- filter chips are wired up in JS from the CATEGORIES list -->
+      <div class="filters" id="filters" role="group" aria-label="Filter resources by type"></div>
+    </div>
+  </header>
+
+  <!-- ===================== CONTENT ===================== -->
+  <main class="wrap stack">
+    <p class="count" id="count" aria-live="polite"></p>
+    <div class="grid" id="grid"></div>
+
+    <!-- NEWSLETTER -->
+    <section class="news-card" id="newsletter" aria-labelledby="news-h">
+      <span class="label">Weekly newsletter</span>
+      <h2 id="news-h">Get the weekly drop</h2>
+      <p class="kick">One short email a week — the week's tips fully baked out with links. Automation plays, tool finds, and the occasional banana. Unsubscribe anytime.</p>
+
+      <form id="news-form" novalidate>
+        <div class="field">
+          <label for="news-email" style="position:absolute;left:-9999px">Email</label>
+          <input id="news-email" name="email" type="email" autocomplete="email" inputmode="email" placeholder="jordan@riverasitework.com" required />
+        </div>
+        <button class="btn" type="submit" id="news-btn">🍌 Sign me up</button>
+        <p class="form-note">No spam. One useful email a week.</p>
+        <p class="err-msg" id="news-err">Something went sideways. Mind trying again?</p>
+      </form>
+
+      <div class="success" id="news-success" role="status" aria-live="polite">
+        <div class="check">✓</div>
+        <h3>You're on the list</h3>
+        <p>See you in your inbox. 🍌</p>
+      </div>
+    </section>
+
+    <!-- SOCIAL -->
+    <nav class="social" aria-label="Find Takeoff Monkey elsewhere">
+      <a id="soc-li" href="https://www.linkedin.com/company/takeoffmonkey" target="_blank" rel="noopener">
+        <span class="ico">in</span>
+        <span>LinkedIn<span class="s-sub">Daily plays for estimators &amp; owners</span></span>
+      </a>
+      <a id="soc-ig" href="https://www.instagram.com/takeoffmonkey" target="_blank" rel="noopener">
+        <span class="ico">◎</span>
+        <span>Instagram<span class="s-sub">The win, fast, mid-scroll</span></span>
+      </a>
+      <a id="soc-site" href="https://www.takeoffmonkey.com" target="_blank" rel="noopener">
+        <span class="ico">🐒</span>
+        <span>takeoffmonkey.com<span class="s-sub">See what we actually do</span></span>
+      </a>
+      <a id="soc-mail" href="mailto:sales@takeoffmonkey.com">
+        <span class="ico">✉</span>
+        <span>Email us<span class="s-sub">Got a question? Holler.</span></span>
+      </a>
+    </nav>
+  </main>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer>
+    <div class="wrap">
+      <img src="/assets/tkm_white.png" alt="Takeoff Monkey" />
+      <p>
+        © <span id="yr"></span> Takeoff Monkey LLC<br/>
+        <a href="mailto:sales@takeoffmonkey.com">sales@takeoffmonkey.com</a>
+      </p>
+    </div>
+  </footer>
+
+  <!-- ===================== CONFIG ===================== -->
+  <script id="config">
+    /* ============================================================
+       EDIT BELOW. The grid is data-driven — add a resource by
+       dropping a new object into RESOURCES. Set "fresh:true" to
+       flag the newest one. "type" must match a CATEGORIES key.
+       ============================================================ */
+
+    const NEWSLETTER_URL = "https://takeoffmonkey.app.n8n.cloud/webhook/newsletter-signup";
+
+    // Filter chips, in display order. "all" is added automatically; chips with
+    // no matching resource are hidden by the render code.
+    const CATEGORIES = {
+      guide:      "Guides",
+      cheatsheet: "Cheat Sheets"
+    };
+
+    // Each resource. Files are committed under /resources/files/ and served
+    // directly. Add a resource by dropping a new object in here.
+    const RESOURCES = [
+      {
+        type:"guide",
+        title:"The Contractor's Field Guide to Automation",
+        meta:"Field guide · PDF",
+        blurb:"Saving time, killing errors, and locking in your best processes — with the exact tools we use every day.",
+        cta:"Get the guide",
+        url:"/resources/files/automation-guide.pdf"
+      },
+      {
+        type:"guide",
+        fresh:true,
+        title:"The Ultimate Guide to Claude for Contractors",
+        meta:"Field guide · PDF",
+        blurb:"How to actually put Claude to work in an estimating shop — the prompts, workflows, and guardrails that keep it useful.",
+        cta:"Get the guide",
+        url:"/resources/files/claude-guide.pdf"
+      },
+      {
+        type:"guide",
+        title:"The Auto-RFP Engine Playbook",
+        meta:"Playbook · PDF",
+        blurb:"Build a free RFP-response engine in Google Workspace that drafts and routes replies — step by step, copy-paste included.",
+        cta:"Get the playbook",
+        url:"/resources/files/auto-rfp-playbook.pdf"
+      },
+      {
+        type:"cheatsheet",
+        title:"Estimator Keyboard Cheat Sheet",
+        meta:"Cheat sheet · PDF",
+        blurb:"The keyboard commands that shave real minutes off every takeoff and bid. Print it, pin it, stop reaching for the mouse.",
+        cta:"Download it",
+        url:"/resources/files/estimator-keyboard-cheatsheet.pdf"
+      }
+    ];
+  </script>
+
+  <script>
+    document.getElementById('yr').textContent = new Date().getFullYear();
+
+    /* ---------- Build the filter chips + grid ---------- */
+    var grid    = document.getElementById('grid');
+    var filters = document.getElementById('filters');
+    var countEl = document.getElementById('count');
+    var activeType = 'all';
+
+    // chips: All first, then each category that actually has resources
+    var present = {};
+    RESOURCES.forEach(function(r){ present[r.type] = true; });
+    var chipDefs = [['all','All']].concat(
+      Object.keys(CATEGORIES)
+        .filter(function(k){ return present[k]; })
+        .map(function(k){ return [k, CATEGORIES[k]]; })
+    );
+    chipDefs.forEach(function(def, i){
+      var b = document.createElement('button');
+      b.className = 'chip';
+      b.type = 'button';
+      b.textContent = def[1];
+      b.setAttribute('data-type', def[0]);
+      b.setAttribute('aria-pressed', i === 0 ? 'true' : 'false');
+      b.addEventListener('click', function(){ setFilter(def[0]); });
+      filters.appendChild(b);
+    });
+
+    function escapeHtml(s){
+      return String(s).replace(/[&<>"']/g, function(c){
+        return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+      });
+    }
+
+    function render(){
+      var items = RESOURCES.filter(function(r){
+        return activeType === 'all' || r.type === activeType;
+      });
+
+      countEl.textContent = items.length + (items.length === 1 ? ' resource' : ' resources');
+
+      if (!items.length){
+        grid.innerHTML = '<p class="empty">Nothing here yet — check back soon. 🍌</p>';
+        return;
+      }
+
+      grid.innerHTML = items.map(function(r){
+        var live = r.url && r.url !== '#';
+        var tagText = (CATEGORIES[r.type] || r.type);
+        return ''
+          + '<a class="res' + (r.fresh ? ' fresh' : '') + '" '
+          +    'href="' + escapeHtml(r.url || '#') + '" '
+          +    (live ? 'target="_blank" rel="noopener" ' : 'aria-disabled="true" ')
+          +    '>'
+          +   '<div class="res-top">'
+          +     '<span class="tag">' + escapeHtml(tagText) + '</span>'
+          +     '<span class="meta">' + escapeHtml(r.meta || '') + '</span>'
+          +   '</div>'
+          +   '<h2>' + escapeHtml(r.title) + '</h2>'
+          +   '<p>' + escapeHtml(r.blurb) + '</p>'
+          +   '<span class="go">' + escapeHtml(r.cta || 'Open')
+          +     ' <span class="arr">→</span></span>'
+          + '</a>';
+      }).join('');
+    }
+
+    function setFilter(type){
+      activeType = type;
+      Array.prototype.forEach.call(filters.children, function(c){
+        c.setAttribute('aria-pressed', c.getAttribute('data-type') === type ? 'true' : 'false');
+      });
+      render();
+    }
+
+    render();
+
+    /* ---------- UTM capture (shared with letsgo) ---------- */
+    function getUTMs(){
+      try {
+        var qs = new URLSearchParams(window.location.search);
+        var keys = ['utm_source','utm_medium','utm_campaign','utm_content','utm_term'];
+        var found = {};
+        keys.forEach(function(k){ var v = qs.get(k); if (v) found[k] = v; });
+        return found;
+      } catch(e){ return {}; }
+    }
+
+    /* ---------- Newsletter form -> n8n webhook ---------- */
+    function validEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+    var newsForm = document.getElementById('news-form');
+    var newsBtn  = document.getElementById('news-btn');
+    var newsErr  = document.getElementById('news-err');
+
+    newsForm.addEventListener('submit', async function(e){
+      e.preventDefault();
+      newsErr.classList.remove('show');
+
+      var email = newsForm.email.value.trim();
+      if (!validEmail(email)){
+        newsErr.textContent = 'Please enter a valid email.';
+        newsErr.classList.add('show');
+        return;
+      }
+      if (/^https:\/\/YOUR/.test(NEWSLETTER_URL)){
+        newsErr.textContent = 'Newsletter webhook not configured yet — add NEWSLETTER_URL in the config block.';
+        newsErr.classList.add('show');
+        return;
+      }
+
+      newsBtn.disabled = true;
+      var original = newsBtn.innerHTML;
+      newsBtn.innerHTML = 'Signing up…';
+
+      var u = getUTMs();
+      var payload = {
+        email: email,
+        list: 'weekly-newsletter',
+        source: 'letsgo.takeo.co/resources',
+        submitted_at: new Date().toISOString(),
+        utm_source: u.utm_source || '',
+        utm_medium: u.utm_medium || '',
+        referrer: document.referrer || ''
+      };
+
+      try{
+        var res = await fetch(NEWSLETTER_URL, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Bad status ' + res.status);
+        newsForm.style.display = 'none';
+        document.getElementById('news-success').classList.add('show');
+      }catch(err){
+        newsBtn.disabled = false;
+        newsBtn.innerHTML = original;
+        newsErr.textContent = 'Something went sideways. Mind trying again?';
+        newsErr.classList.add('show');
+      }
+    });
+  </script>
+
+  <!-- Vercel Web Analytics — enable it in the Vercel dashboard (Project → Analytics) -->
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
+</body>
+</html>
