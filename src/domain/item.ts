@@ -23,6 +23,7 @@ export const READ_COLUMN_IDS: string[] = [
   COLUMNS.postCheckbox,
   COLUMNS.newsletterCheckbox,
   COLUMNS.useMyCopy,
+  COLUMNS.bufferPostId,
 ];
 
 const KNOWN_PLATFORMS = new Set<string>(Object.values(PLATFORM));
@@ -112,5 +113,6 @@ export function parseItem(raw: RawItem): MondayItem {
     newsletterUsed: parseCheckbox(cols, COLUMNS.newsletterCheckbox),
     useMyCopy: parseCheckbox(cols, COLUMNS.useMyCopy),
     attachmentAssetIds: parseFilesFrom(cols, COLUMNS.attachment),
+    bufferPostId: text(cols, COLUMNS.bufferPostId),
   };
 }

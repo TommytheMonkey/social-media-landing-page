@@ -8,16 +8,26 @@
 
 import * as monday from '../clients/monday';
 import { COLUMNS } from '../config/board';
+import { cv } from '../domain/columnValues';
 
 const BUFFER_MARKER = 'buffer-post-id:';
 
-/** Record a successful Buffer send on the item (for audit + reconciliation). */
+/**
+ * Record a successful Buffer send on the item. Writes the post id to the
+ * Buffer Post ID column (the primary, structured lookup) AND posts an audit
+ * update (human-readable history; also the fallback for pre-column items). The
+ * column write is best-effort: a failure there must not undo the send, so it's
+ * logged and swallowed — findBufferPostId still recovers the id from the update.
+ */
 export async function recordBufferPostId(
   itemId: string,
   channelId: string,
   postId: string,
   scheduledFor: string | null,
 ): Promise<void> {
+  await monday
+    .updateColumns(itemId, { [COLUMNS.bufferPostId]: cv.text(postId) })
+    .catch(() => undefined);
   const when = scheduledFor ? `scheduled for ${scheduledFor}` : 'posted now';
   await monday.createUpdate(
     itemId,
@@ -37,10 +47,17 @@ export async function currentStatus(itemId: string): Promise<string | null> {
 }
 
 /**
- * Recover the most-recent Buffer post id recorded by recordBufferPostId. Paginates
- * the item's updates (newest first) so the marker can't fall outside a fixed window.
+ * Recover the Buffer post id for an item. Prefers the structured Buffer Post ID
+ * column (pass it in via `fromColumn` — flows already fetch it on the parsed item,
+ * so this costs no extra read). Falls back to scanning the item's updates for the
+ * marker, which keeps items posted before the column existed resolvable.
  */
-export async function findBufferPostId(itemId: string): Promise<string | null> {
+export async function findBufferPostId(
+  itemId: string,
+  fromColumn?: string | null,
+): Promise<string | null> {
+  if (fromColumn && fromColumn.length > 0) return fromColumn;
+
   const re = new RegExp(`${BUFFER_MARKER}([^\\s)]+)`);
   const PAGE = 50;
   for (let page = 1; page <= 10; page++) {

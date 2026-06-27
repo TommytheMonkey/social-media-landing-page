@@ -32,6 +32,7 @@ export const COLUMNS = {
   metricSaves: 'numeric_mm4ny7ja', // numbers — Saves (Instagram only; absent for LinkedIn)
   metricImpressions: 'numeric_mm4nbe6q', // numbers — Impressions
   metricsSyncedAt: 'text_mm4nmp17', // text — last Buffer metricsUpdatedAt synced (Flow 6 freshness guard)
+  bufferPostId: 'text_mm4qr4m1', // text — Buffer post id recorded on send (maps item -> Buffer post for status/metrics)
 } as const;
 
 /**
