@@ -7,11 +7,27 @@ import type { MondayItem } from '../types';
 import * as monday from '../clients/monday';
 import * as google from '../clients/google';
 import { uploadPublicImage } from '../clients/blob';
+import { SUBSCRIBE_URL, SUBSCRIBE_PLACEHOLDER } from '../config/links';
 
 const FOLDER_ID_RE = /folders\/([a-zA-Z0-9_-]+)/;
 
+// Normalize the one-word brand name to "Takeoff Monkey", but leave a #TakeoffMonkey
+// hashtag untouched (a space would break it). Case-sensitive so URLs/handles are safe.
+const BRAND_ONEWORD_RE = /(?<!#)\bTakeoffMonkey\b/g;
+
 /**
- * Read the post text from the item's Google Doc (the editable source of truth).
+ * Final touch-ups applied to the post body right before it's snapshotted and sent:
+ *  - swap the literal "[SUBSCRIBE LINK]" placeholder for the real signup URL, so it
+ *    can never publish raw;
+ *  - normalize "TakeoffMonkey" -> "Takeoff Monkey" (leaving #TakeoffMonkey intact).
+ */
+export function finalizePostText(text: string): string {
+  return text.split(SUBSCRIBE_PLACEHOLDER).join(SUBSCRIBE_URL).replace(BRAND_ONEWORD_RE, 'Takeoff Monkey');
+}
+
+/**
+ * Read the post text from the item's Google Doc (the editable source of truth) and
+ * apply send-time finalization (subscribe link + brand-name normalization).
  * Throws with a clear message if the folder/Doc is missing or empty.
  */
 export async function resolvePostTextFromDoc(item: MondayItem): Promise<string> {
@@ -25,7 +41,7 @@ export async function resolvePostTextFromDoc(item: MondayItem): Promise<string> 
 
   const text = (await google.readDocText(docId)).trim();
   if (text.length === 0) throw new Error('The Google Doc is empty');
-  return text;
+  return finalizePostText(text);
 }
 
 /** Word count of the post text (whitespace-delimited). */
