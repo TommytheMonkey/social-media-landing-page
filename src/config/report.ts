@@ -6,10 +6,10 @@ export const REPORT_RECIPIENTS = ['tommy@takeoffmonkey.com', 'heidi@takeoffmonke
 /**
  * Workspace user the report is sent AS (From:). The service account impersonates
  * this address via domain-wide delegation, so it MUST be a real Workspace user on
- * the takeoffmonkey.com domain. Override with REPORT_FROM if you add a dedicated
- * sender (e.g. reports@takeoffmonkey.com).
+ * the takeoffmonkey.com domain (must be a real Workspace user, not just an alias).
+ * Override with REPORT_FROM to change the sender without a code change.
  */
-export const REPORT_SENDER = process.env.REPORT_FROM || 'tommy@takeoffmonkey.com';
+export const REPORT_SENDER = process.env.REPORT_FROM || 'clyde@takeoffmonkey.com';
 
 /** Display name on the From: header. */
 export const REPORT_FROM_NAME = 'Takeoff Monkey Analytics';
