@@ -404,8 +404,9 @@
       cheatsheet: "Cheat Sheets"
     };
 
-    // Each resource. Files are committed under /resources/files/ and served
-    // directly. Add a resource by dropping a new object in here.
+    // Each resource. PDFs live in Vercel Blob under content-engine/downloads/
+    // (served at /downloads/<file> via the vercel.json rewrite). To add one:
+    // upload the PDF to that blob folder, then drop a new object in here.
     const RESOURCES = [
       {
         type:"guide",
@@ -413,7 +414,7 @@
         meta:"Field guide · PDF",
         blurb:"Saving time, killing errors, and locking in your best processes — with the exact tools we use every day.",
         cta:"Get the guide",
-        url:"/resources/files/automation-guide.pdf"
+        url:"/downloads/automation-guide.pdf"
       },
       {
         type:"guide",
@@ -422,7 +423,7 @@
         meta:"Field guide · PDF",
         blurb:"How to actually put Claude to work in an estimating shop — the prompts, workflows, and guardrails that keep it useful.",
         cta:"Get the guide",
-        url:"/resources/files/claude-guide.pdf"
+        url:"/downloads/claude-guide.pdf"
       },
       {
         type:"guide",
@@ -430,7 +431,7 @@
         meta:"Playbook · PDF",
         blurb:"Build a free RFP-response engine in Google Workspace that drafts and routes replies — step by step, copy-paste included.",
         cta:"Get the playbook",
-        url:"/resources/files/auto-rfp-playbook.pdf"
+        url:"/downloads/auto-rfp-playbook.pdf"
       },
       {
         type:"cheatsheet",
@@ -438,7 +439,7 @@
         meta:"Cheat sheet · PDF",
         blurb:"The keyboard commands that shave real minutes off every takeoff and bid. Print it, pin it, stop reaching for the mouse.",
         cta:"Download it",
-        url:"/resources/files/estimator-keyboard-cheatsheet.pdf"
+        url:"/downloads/estimator-keyboard-cheatsheet.pdf"
       }
     ];
   </script>
