@@ -198,6 +198,63 @@ export async function readDocText(documentId: string): Promise<string> {
   return text;
 }
 
+// --- Gmail send (domain-wide delegation) -------------------------------------
+// You cannot send mail "as the service account" — Gmail requires impersonating a
+// real Workspace user. One-time setup: a Workspace admin grants this SA's client id
+// domain-wide delegation for the gmail.send scope (see the weekly-report docs).
+// The impersonated user (`sender`) becomes the From: address.
+
+const GMAIL_SEND_SCOPE = 'https://www.googleapis.com/auth/gmail.send';
+
+function gmailFor(sender: string) {
+  const creds = serviceAccount();
+  return google.gmail({
+    version: 'v1',
+    auth: new google.auth.JWT({
+      email: creds.client_email,
+      key: creds.private_key,
+      scopes: [GMAIL_SEND_SCOPE],
+      subject: sender, // impersonate this Workspace user
+    }),
+  });
+}
+
+/** RFC 2047-encode a header value when it carries non-ASCII (e.g. an emoji subject). */
+function encodeHeader(s: string): string {
+  return /[^\x00-\x7F]/.test(s) ? `=?UTF-8?B?${Buffer.from(s, 'utf8').toString('base64')}?=` : s;
+}
+
+export interface SendEmailArgs {
+  /** Workspace user to send AS (must be authorized via domain-wide delegation). */
+  sender: string;
+  to: string[];
+  subject: string;
+  html: string;
+  /** Optional display name for the From: header. */
+  fromName?: string;
+}
+
+/** Send an HTML email as `sender` (impersonated). Throws on API/auth failure. */
+export async function sendHtmlEmail(args: SendEmailArgs): Promise<void> {
+  const from = args.fromName ? `${encodeHeader(args.fromName)} <${args.sender}>` : args.sender;
+  const mime = [
+    `From: ${from}`,
+    `To: ${args.to.join(', ')}`,
+    `Subject: ${encodeHeader(args.subject)}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/html; charset="UTF-8"',
+    'Content-Transfer-Encoding: base64',
+    '',
+    Buffer.from(args.html, 'utf8').toString('base64'),
+  ].join('\r\n');
+  const raw = Buffer.from(mime, 'utf8')
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+  await gmailFor(args.sender).users.messages.send({ userId: 'me', requestBody: { raw } });
+}
+
 /** Upload image bytes into a Drive folder. Returns the file ref. */
 export async function uploadImage(
   folderId: string,
