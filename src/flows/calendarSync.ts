@@ -29,11 +29,20 @@ function endUtcISO(startUtcISO: string): string {
   return iso;
 }
 
+/** First sentence/clause of `s`, capped to ~80 chars, for a scannable event title. */
+function titleSnippet(s: string): string {
+  const oneLine = s.replace(/\s+/g, ' ').trim();
+  const firstSentence = oneLine.split(/(?<=[.!?])\s/)[0] ?? oneLine;
+  const base = firstSentence.length <= 80 ? firstSentence : oneLine;
+  if (base.length <= 80) return base;
+  return base.slice(0, 79).replace(/\s+\S*$/, '') + '…';
+}
+
 /** Build the event title + body for an item at a given send time. */
 function eventInput(item: MondayItem, startUtcISO: string, postId: string | null): google.CalendarEventInput {
   const who = item.voice ?? 'TBD';
   const idea = item.description?.trim();
-  const what = idea || item.name;
+  const what = titleSnippet(idea || item.name);
   const meta = [
     `Account/voice: ${who}`,
     `Platform: ${item.platformLabels.join(', ') || item.platform || '—'}`,
