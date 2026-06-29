@@ -54,13 +54,29 @@ async function bufferGql<T = any>(
     const retryAfter = (typeof body.extensions?.retryAfter === 'number'
       ? body.extensions.retryAfter
       : errors?.[0]?.extensions?.retryAfter) as number | undefined;
-    const isRateLimited = res.status === 429 || typeof retryAfter === 'number';
+    const rlCode = (errors?.[0]?.extensions?.code ?? body.extensions?.code) as string | undefined;
+    // Buffer's hard quota limit (RATE_LIMIT_EXCEEDED, window 15m/1h/24h) won't clear
+    // within our backoff — retrying just burns more of the already-exhausted quota
+    // and stalls the function ~30s/call. Fail fast: reconcile/metrics callers skip
+    // the item, and the send flows surface a clear Error instead of hanging.
+    const isQuotaExceeded = rlCode === 'RATE_LIMIT_EXCEEDED';
+    const isRateLimited = res.status === 429 || typeof retryAfter === 'number' || isQuotaExceeded;
 
-    if (isRateLimited && attempt <= MAX_RETRIES) {
-      const waitMs = (typeof retryAfter === 'number' ? retryAfter : Math.min(2 ** attempt, 60)) * 1000;
-      log.warn('buffer rate limited, backing off', { attempt, waitMs });
-      await sleep(waitMs);
-      continue;
+    if (isRateLimited) {
+      const retryableSoon = typeof retryAfter === 'number' && retryAfter <= 60;
+      if (isQuotaExceeded && !retryableSoon) {
+        const win = errors?.[0]?.extensions?.window ?? body.extensions?.window;
+        throw new Error(
+          `Buffer rate limit exceeded${win ? ` (window ${win})` : ''} — not retrying; ` +
+            `wait for the quota to reset.`,
+        );
+      }
+      if (attempt <= MAX_RETRIES) {
+        const waitMs = (typeof retryAfter === 'number' ? retryAfter : Math.min(2 ** attempt, 60)) * 1000;
+        log.warn('buffer rate limited, backing off', { attempt, waitMs });
+        await sleep(waitMs);
+        continue;
+      }
     }
 
     if (!res.ok) throw new Error(`Buffer HTTP ${res.status}: ${text.slice(0, 800)}`);

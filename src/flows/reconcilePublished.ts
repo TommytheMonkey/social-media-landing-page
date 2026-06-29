@@ -17,6 +17,7 @@ import { COLUMNS, STATUS } from '../config/board';
 import { cv } from '../domain/columnValues';
 import { parseItem, READ_COLUMN_IDS } from '../domain/item';
 import { findBufferPostId, currentStatus } from '../lib/idempotency';
+import { sendTimePassed } from '../lib/timezone';
 import { log } from '../lib/logger';
 
 /** Per-item outcome of a reconcile pass. */
@@ -57,6 +58,26 @@ export async function reconcilePublishedItem(item: MondayItem): Promise<Reconcil
   if (!item.platform) {
     log.info('Flow 8 skip — non-social item in Scheduled!', { itemId: item.id });
     return 'pending';
+  }
+
+  // Skip posts whose scheduled send time hasn't passed yet: Buffer can't have
+  // published them, so the status read is pure waste. Checking every future-dated
+  // post every 5 min was the main driver of Buffer's rate-limit exhaustion. A bad
+  // date string can't be evaluated — fall through and check rather than skip.
+  if (item.postDate) {
+    let reached: boolean;
+    try {
+      reached = sendTimePassed(item.postDate);
+    } catch {
+      reached = true;
+    }
+    if (!reached) {
+      log.info('Flow 8 skip — scheduled send time not reached yet', {
+        itemId: item.id,
+        postDate: item.postDate,
+      });
+      return 'pending';
+    }
   }
 
   const postId = await findBufferPostId(item.id, item.bufferPostId);

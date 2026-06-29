@@ -26,6 +26,16 @@ export function scheduledUtcISO(postDate: string): string {
   return iso;
 }
 
+/**
+ * True if the configured send time (05:00 ET) on `postDate` is at or before now.
+ * Used to skip reconciling posts Buffer can't possibly have published yet — a
+ * future-dated post is always still "pending", so a Buffer status read is wasted.
+ */
+export function sendTimePassed(postDate: string): boolean {
+  const send = DateTime.fromISO(scheduledUtcISO(postDate), { zone: 'utc' });
+  return send.toMillis() <= DateTime.utc().toMillis();
+}
+
 /** Today's date 'YYYY-MM-DD' in ET (for the nightly past-due / reconcile sweep). */
 export function todayInEastern(): string {
   const d = DateTime.now().setZone(POST_TIMEZONE).toISODate();
