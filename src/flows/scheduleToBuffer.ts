@@ -14,6 +14,7 @@ import { reportError, reportValidationFailure } from '../domain/errors';
 import { recordBufferPostId, currentStatus } from '../lib/idempotency';
 import { scheduledUtcISO } from '../lib/timezone';
 import { prepareImageUrl, resolvePostTextFromDoc, wordCount } from './sendShared';
+import { mirrorCreateForItem } from './calendarSync';
 import { log } from '../lib/logger';
 
 /** Poll for cleared raw drafts and schedule each to Buffer. */
@@ -113,6 +114,10 @@ export async function scheduleItem(item: MondayItem): Promise<boolean> {
       auditErr: auditErr instanceof Error ? auditErr.message : String(auditErr),
     });
   }
+
+  // Mirror onto the shared Google Calendar (best-effort — never fails the send).
+  await mirrorCreateForItem(item, dueAtUtc, postId);
+
   log.info('Flow 2 scheduled post', { itemId: item.id, platform, dueAtUtc, postId });
   return true;
 }

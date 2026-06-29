@@ -14,6 +14,8 @@ import { cv } from '../domain/columnValues';
 import { parseItem, READ_COLUMN_IDS } from '../domain/item';
 import { reportError } from '../domain/errors';
 import { reconcilePublishedItem } from './reconcilePublished';
+import { pollAndSyncSchedule } from './syncSchedule';
+import { removeMirrorForItem } from './calendarSync';
 import { findBufferPostId } from '../lib/idempotency';
 import { isBeforeTodayEastern } from '../lib/timezone';
 import { log } from '../lib/logger';
@@ -22,10 +24,12 @@ export interface NightlySummary {
   pastDue: number;
   reconciled: number;
   junked: number;
+  /** Posts whose Post Date moved and were re-synced to Buffer + calendar (Flow 9 backstop). */
+  resynced: number;
 }
 
 export async function runNightly(): Promise<NightlySummary> {
-  const summary: NightlySummary = { pastDue: 0, reconciled: 0, junked: 0 };
+  const summary: NightlySummary = { pastDue: 0, reconciled: 0, junked: 0, resynced: 0 };
 
   // 1. Past Due — candidates are not-yet-scheduled items (ideation / Raw Draft).
   const candidates = [
@@ -85,6 +89,7 @@ export async function runNightly(): Promise<NightlySummary> {
               log.info('Flow 4 junk: removed queued Buffer post', { itemId: item.id, postId, deleted: res.deleted });
             }
           }
+          await removeMirrorForItem(item.id); // drop any calendar entry before archiving
           await monday.moveItemToGroup(item.id, groupId);
           await monday.updateColumns(item.id, { [COLUMNS.postTrigger]: cv.status('') });
           summary.junked++;
@@ -93,6 +98,17 @@ export async function runNightly(): Promise<NightlySummary> {
         }
       }
     }
+  }
+
+  // 4. Reschedule backstop — re-sync any Scheduled! posts whose Post Date moved
+  // since the last poll (Flow 9). No-op when the calendar mirror isn't configured.
+  try {
+    const sync = await pollAndSyncSchedule();
+    summary.resynced = sync.rescheduled;
+  } catch (err) {
+    log.warn('Flow 4 reschedule backstop failed', {
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 
   log.info('Flow 4 nightly sweep complete', { ...summary });

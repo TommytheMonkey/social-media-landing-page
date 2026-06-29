@@ -12,6 +12,7 @@ import { cv } from '../domain/columnValues';
 import { parseItem, READ_COLUMN_IDS } from '../domain/item';
 import { reportError } from '../domain/errors';
 import { findBufferPostId, currentStatus } from '../lib/idempotency';
+import { removeMirrorForItem } from './calendarSync';
 import { log } from '../lib/logger';
 
 /** Poll for "CANCEL!" items and process each. */
@@ -72,6 +73,7 @@ export async function cancelItem(item: MondayItem): Promise<boolean> {
         `Please manually delete it from ${item.platform ?? 'the platform'} ` +
         `(${item.voice ?? 'the'} account), then update this item.`,
     );
+    await removeMirrorForItem(item.id); // drop the calendar entry — it's being cancelled
     log.info('Cancel: live post flagged for manual delete', { itemId: item.id });
     return false;
   }
@@ -101,6 +103,7 @@ export async function cancelItem(item: MondayItem): Promise<boolean> {
         item.id,
         `✅ Canceled the scheduled Buffer post (id ${postId}) — removed from the queue before it published.`,
       );
+      await removeMirrorForItem(item.id); // remove its calendar entry too
       log.info('Cancel: scheduled post canceled', { itemId: item.id, postId });
       return true;
     }

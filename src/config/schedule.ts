@@ -16,3 +16,6 @@ export const DEFAULT_PLATFORM: Platform = 'LinkedIn';
 
 /** Hard cap on parts the generator may split a post into. */
 export const MAX_PARTS = 6;
+
+/** Duration (minutes) of the Google Calendar mirror event for a scheduled post. */
+export const CALENDAR_EVENT_DURATION_MIN = 30;

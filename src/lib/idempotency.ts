@@ -11,6 +11,15 @@ import { COLUMNS } from '../config/board';
 import { cv } from '../domain/columnValues';
 
 const BUFFER_MARKER = 'buffer-post-id:';
+// Calendar mirror marker. Like the Buffer marker, we record the Google Calendar
+// event id (and the UTC instant we last synced it to) in the item's update trail
+// rather than a dedicated board column — recoverable by scanning updates, and the
+// newest marker wins. The recorded `due` doubles as the reschedule-detection
+// baseline: if the item's Post Date no longer maps to this instant, it moved.
+const CALENDAR_MARKER = 'calendar-event-id:';
+// Event id stops at whitespace or a `<` (Monday may return update bodies wrapped in
+// HTML); the due instant is matched as a strict ISO-8601 UTC value ending in Z.
+const CALENDAR_MARKER_RE = /calendar-event-id:([^\s<]+)\s+due:(\d{4}-\d{2}-\d{2}T[\d:.]+Z)/;
 
 /**
  * Record a successful Buffer send on the item. Writes the post id to the
@@ -33,6 +42,48 @@ export async function recordBufferPostId(
     itemId,
     `✅ Sent to Buffer (${when})\n${BUFFER_MARKER}${postId} (channel ${channelId})`,
   );
+}
+
+/** A recovered calendar-mirror record: the event id + the UTC instant last synced. */
+export interface CalendarSyncRecord {
+  eventId: string;
+  /** ISO-8601 UTC instant this event was last scheduled to (reschedule baseline). */
+  dueAtUtc: string;
+}
+
+/**
+ * Record (or re-record) the calendar mirror for an item: the Google Calendar
+ * event id and the UTC instant it now points at. Posted as an item update so the
+ * newest one reflects the current state — no dedicated board column required.
+ */
+export async function recordCalendarSync(
+  itemId: string,
+  eventId: string,
+  dueAtUtc: string,
+): Promise<void> {
+  await monday.createUpdate(
+    itemId,
+    `📅 Calendar mirror synced (event for ${dueAtUtc})\n${CALENDAR_MARKER}${eventId} due:${dueAtUtc}`,
+  );
+}
+
+/**
+ * Recover the most-recent calendar mirror record for an item by scanning its
+ * updates (newest first). Returns null if the post was never mirrored — callers
+ * treat that as "needs a backfill". Same scan strategy as findBufferPostId.
+ */
+export async function findCalendarSync(itemId: string): Promise<CalendarSyncRecord | null> {
+  const PAGE = 50;
+  for (let page = 1; page <= 10; page++) {
+    const updates = await monday.getItemUpdates(itemId, PAGE, page);
+    if (updates.length === 0) break;
+    for (const u of updates) {
+      const m = u.body.match(CALENDAR_MARKER_RE);
+      if (m) return { eventId: m[1]!, dueAtUtc: m[2]! };
+    }
+    if (updates.length < PAGE) break;
+  }
+  return null;
 }
 
 /**

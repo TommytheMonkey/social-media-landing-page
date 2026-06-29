@@ -13,6 +13,8 @@ import { validateForSend, validateTextLength, isNonSocialPlatform } from '../dom
 import { reportError, reportValidationFailure } from '../domain/errors';
 import { recordBufferPostId, currentStatus } from '../lib/idempotency';
 import { prepareImageUrl, resolvePostTextFromDoc, wordCount } from './sendShared';
+import { mirrorCreateForItem } from './calendarSync';
+import { DateTime } from 'luxon';
 import { log } from '../lib/logger';
 
 /** Poll for "Post Now!" items and publish each immediately. */
@@ -115,6 +117,13 @@ export async function postNowItem(item: MondayItem): Promise<boolean> {
       auditErr: auditErr instanceof Error ? auditErr.message : String(auditErr),
     });
   }
+
+  // Mirror onto the shared Google Calendar at the publish time (best-effort). A
+  // Post-Now item goes straight to Live!, so it never enters Flow 9's reschedule
+  // sweep — this is the only place it gets a calendar entry.
+  const nowUtc = DateTime.utc().toISO();
+  if (nowUtc) await mirrorCreateForItem(item, nowUtc, postId);
+
   log.info('Flow 3 posted now', { itemId: item.id, platform, postId });
   return true;
 }

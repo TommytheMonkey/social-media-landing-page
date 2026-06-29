@@ -7,6 +7,7 @@
 import { google } from 'googleapis';
 import { Readable } from 'node:stream';
 import { readFileSync, existsSync } from 'node:fs';
+import { POST_TIMEZONE } from '../config/schedule';
 
 const SCOPES = [
   'https://www.googleapis.com/auth/drive',
@@ -253,6 +254,110 @@ export async function sendHtmlEmail(args: SendEmailArgs): Promise<void> {
     .replace(/\//g, '_')
     .replace(/=+$/, '');
   await gmailFor(args.sender).users.messages.send({ userId: 'me', requestBody: { raw } });
+}
+
+// --- Google Calendar (mirror scheduled posts) --------------------------------
+// Posts scheduled to Buffer are also mirrored as events on a shared Google
+// Calendar so the team can see the social plan at a glance. Set GOOGLE_CALENDAR_ID
+// to the target calendar's id (e.g. c_xxxxx@group.calendar.google.com). Times are
+// stored as UTC instants; the calendar's display timezone is its own setting.
+//
+// AUTH — two supported models:
+//  1) Domain-wide delegation (RECOMMENDED, same as the Gmail send flow). Set
+//     GOOGLE_CALENDAR_AS to a Workspace user who has write access to the calendar
+//     (typically its owner/creator); the service account impersonates them. The
+//     SA's client id must be granted the calendar.events scope in the Workspace
+//     Admin console's domain-wide delegation. Use this when the Workspace blocks
+//     sharing edit access to "external" accounts (a service account counts as
+//     external, so "Make changes to events" is greyed out for it in calendar UI).
+//  2) Direct share (only if the Workspace allows external edit sharing). Leave
+//     GOOGLE_CALENDAR_AS unset and instead share the calendar with the SA's
+//     client_email -> "Make changes to events".
+
+const CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events';
+
+/** The configured calendar id, or null when the mirror is not enabled. */
+function calendarId(): string | null {
+  const id = process.env.GOOGLE_CALENDAR_ID;
+  return id && id.trim().length > 0 ? id.trim() : null;
+}
+
+/** True when GOOGLE_CALENDAR_ID is set — gates all calendar writes + reschedule sync. */
+export function calendarConfigured(): boolean {
+  return calendarId() !== null;
+}
+
+function calendarClient() {
+  const creds = serviceAccount();
+  // Impersonate a Workspace user (domain-wide delegation) when GOOGLE_CALENDAR_AS
+  // is set; otherwise act as the service account itself (direct-share model).
+  const subject = process.env.GOOGLE_CALENDAR_AS?.trim();
+  return google.calendar({
+    version: 'v3',
+    auth: new google.auth.JWT({
+      email: creds.client_email,
+      key: creds.private_key,
+      scopes: [CALENDAR_SCOPE],
+      ...(subject ? { subject } : {}),
+    }),
+  });
+}
+
+export interface CalendarEventInput {
+  summary: string;
+  description: string;
+  /** ISO-8601 UTC instant for the event start (the post's send time). */
+  startUtcISO: string;
+  /** ISO-8601 UTC instant for the event end. */
+  endUtcISO: string;
+}
+
+function eventBody(input: CalendarEventInput) {
+  return {
+    summary: input.summary,
+    description: input.description,
+    start: { dateTime: input.startUtcISO, timeZone: POST_TIMEZONE },
+    end: { dateTime: input.endUtcISO, timeZone: POST_TIMEZONE },
+  };
+}
+
+/** Create a calendar event; returns the Google-assigned event id. Throws if the
+ *  mirror isn't configured (callers gate on calendarConfigured() first). */
+export async function insertCalendarEvent(input: CalendarEventInput): Promise<string> {
+  const cid = calendarId();
+  if (!cid) throw new Error('GOOGLE_CALENDAR_ID is not set');
+  const res = await calendarClient().events.insert({
+    calendarId: cid,
+    requestBody: eventBody(input),
+  });
+  const id = res.data.id;
+  if (!id) throw new Error('Calendar insert returned no event id');
+  return id;
+}
+
+/** Update an existing event in place (used to move a post to a new date). */
+export async function patchCalendarEvent(eventId: string, input: CalendarEventInput): Promise<void> {
+  const cid = calendarId();
+  if (!cid) throw new Error('GOOGLE_CALENDAR_ID is not set');
+  await calendarClient().events.patch({
+    calendarId: cid,
+    eventId,
+    requestBody: eventBody(input),
+  });
+}
+
+/** Delete an event. A 404/410 (already gone) is treated as success, not an error. */
+export async function deleteCalendarEvent(eventId: string): Promise<void> {
+  const cid = calendarId();
+  if (!cid) return;
+  try {
+    await calendarClient().events.delete({ calendarId: cid, eventId });
+  } catch (err) {
+    const code = (err as { code?: number; response?: { status?: number } })?.code
+      ?? (err as { response?: { status?: number } })?.response?.status;
+    if (code === 404 || code === 410) return; // already deleted — nothing to do
+    throw err;
+  }
 }
 
 /** Upload image bytes into a Drive folder. Returns the file ref. */
