@@ -102,17 +102,35 @@ export async function createForItem(item: MondayItem): Promise<void> {
     }
   }
 
-  // Use a provided image instead of generating one. If reading it fails, fall back
-  // to generation (or to text-only when the post also uses your own copy).
-  let providedImage: RenderedImage | null = null;
+  // Image resolution, in priority order (one image, reused across every cell):
+  //  1) an image YOU uploaded to the Content-Image column always wins;
+  //  2) else, if you wrote an Image Prompt (Image Brief column), generate ONE image
+  //     from your exact direction;
+  //  3) else, NO image — we no longer auto-invent a generic one. (Instagram requires
+  //     an image, so it will flag "needs an image" at send until you add one.)
+  let sharedImage: RenderedImage | null = null;
   if (item.hasImage) {
     try {
-      providedImage = await resolveProvidedImage(item);
+      sharedImage = await resolveProvidedImage(item);
     } catch (err) {
-      log.warn('Flow 1: could not read provided image — falling back', {
+      log.warn('Flow 1: could not read provided image', {
         itemId: item.id,
         err: err instanceof Error ? err.message : String(err),
       });
+    }
+  }
+  const imageBrief = item.imageBrief?.trim();
+  if (!sharedImage && imageBrief) {
+    try {
+      const name = `${item.name.replace(/[\\/]+/g, '-')} - image.png`;
+      sharedImage = await generatePostImage(imageBrief, name);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log.warn('Flow 1: image-prompt generation failed', { itemId: item.id, err: msg });
+      await monday.createUpdate(
+        item.id,
+        `⚠️ Couldn't generate an image from your Image Prompt (${msg}). Created the post without an image — add one to the Content-Image column.`,
+      );
     }
   }
 
@@ -175,7 +193,7 @@ export async function createForItem(item: MondayItem): Promise<void> {
     const spec = cellSpecs[i]!;
     const cellId = cellIds[i]!;
     try {
-      await materializeCell(item.name, { itemId: cellId, platform: spec.platform, part: spec.part }, disambiguate, createdDate, providedImage, useMyCopy);
+      await materializeCell(item.name, { itemId: cellId, platform: spec.platform, part: spec.part }, disambiguate, createdDate, sharedImage);
       materialized++;
     } catch (err) {
       await reportError(cellId, `Flow 1 cell ${i + 1}/${cellSpecs.length} (${spec.platform}) failed`, err);
@@ -190,8 +208,7 @@ async function materializeCell(
   cell: Cell,
   disambiguate: boolean,
   createdDate: string,
-  providedImage: RenderedImage | null,
-  useMyCopy: boolean,
+  sharedImage: RenderedImage | null,
 ): Promise<void> {
   const { itemId, platform, part } = cell;
   const multi = part.totalParts > 1;
@@ -210,12 +227,10 @@ async function materializeCell(
     `${baseTitle} - pt. ${part.partNumber} - ${createdDate}${disambiguate ? ` - ${PLATFORM_CODE[platform]}` : ''}`;
   await google.createDoc(folder.id, docName, part.text);
 
-  // Image: use the provided one if present; else generate (base + composite logo).
-  // When "Use My Copy" is set with no provided image, the post is intentionally
-  // text-only. Archive whatever image we end up with in the Drive folder.
-  let rendered: RenderedImage | null = null;
-  if (providedImage) rendered = providedImage;
-  else if (!useMyCopy && part.imagePrompt) rendered = await generatePostImage(part.imagePrompt, `${docName}.png`);
+  // Image: the single image resolved up front (your upload, or one generated from
+  // your Image Prompt), reused across cells. No per-cell auto-generation. Archive it
+  // in the Drive folder when present.
+  const rendered: RenderedImage | null = sharedImage;
   if (rendered) await google.uploadImage(folder.id, rendered.filename, rendered.bytes, rendered.contentType);
 
   // Write the Monday columns. NOTE: the long-text column is intentionally NOT

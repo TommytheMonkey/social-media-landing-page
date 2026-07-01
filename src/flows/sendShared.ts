@@ -54,7 +54,13 @@ export async function prepareImageUrl(item: MondayItem): Promise<string | null> 
   if (!item.hasImage || item.imageAssetIds.length === 0) return null;
 
   const assets = await monday.getAssets(item.imageAssetIds);
-  const asset = assets.find((a) => a.public_url) ?? assets[0];
+  // Prefer the NEWEST uploaded image (last in the column) so an image you add during
+  // review always wins over an earlier one (e.g. an image generated from a brief).
+  const byId = new Map(assets.map((a) => [a.id, a]));
+  const ordered = item.imageAssetIds
+    .map((id) => byId.get(id))
+    .filter((a): a is NonNullable<typeof a> => Boolean(a));
+  const asset = [...ordered].reverse().find((a) => a.public_url) ?? ordered[0];
   if (!asset?.public_url) throw new Error('Image asset has no downloadable public_url');
 
   const res = await fetch(asset.public_url);

@@ -46,6 +46,8 @@ export interface MondayItem {
   hasImage: boolean;
   /** Monday asset IDs of files in the file column (resolve to URLs via getAssets). */
   imageAssetIds: string[];
+  /** User-authored image prompt/brief — used to generate an image ONLY when none is uploaded. */
+  imageBrief: string | null;
   folder: LinkValue | null;
   postChecked: boolean;
   /** True when the "Newsletter" checkbox is set (post already used in a newsletter). */
