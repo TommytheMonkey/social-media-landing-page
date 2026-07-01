@@ -7,7 +7,9 @@ export const BOARD_ID = '18411954205';
 
 /** Column IDs, keyed by their role in the app. */
 export const COLUMNS = {
-  description: 'text_mm4mvtmr', // short text — team's post idea (REQUIRED for creation)
+  author: 'person', // people — item author (Newsletter items: set to Tommy)
+  addedDate: 'date4', // date — auto-set by Monday (Newsletter items leave blank)
+  description: 'text_mm4mvtmr', // short text — team's post idea (REQUIRED for creation); Newsletter: 3-5 sentence summary
   backlink: 'link_mm4mdabt', // link — optional links to include in the post
   platform: 'dropdown_mm33c63g', // dropdown — LinkedIn | Instagram
   postType: 'dropdown_mm4nwd5y', // dropdown — How-to / Playbook | Tip / Trick / Hack | Product Review
@@ -86,12 +88,20 @@ export const STATUS = {
   error: 'Error - Check Updates',
   live: 'Live!',
   cancelled: 'Cancelled',
+  /** Newsletter — set once the branded HTML email is built and saved to Drive. */
+  readyToSend: 'Ready to Send!',
 } as const;
 
 /** Platform dropdown labels. */
 export const PLATFORM = {
   linkedin: 'LinkedIn',
   instagram: 'Instagram',
+  newsletter: 'Newsletter',
+} as const;
+
+/** Post Type dropdown labels. */
+export const POST_TYPE = {
+  newsletter: 'Newsletter',
 } as const;
 
 /**
@@ -123,3 +133,10 @@ export const GARBAGE_GROUP_TITLE = 'Garbage';
 
 /** Group (by title) where assembled newsletters are created. */
 export const NEWSLETTER_PREP_GROUP_TITLE = 'Newsletter Prep';
+
+/** Google Drive root folder (Social Media / newsletters) — each newsletter gets a
+ *  "week of {YYYY-MM-DD}" subfolder here. */
+export const NEWSLETTER_ROOT_FOLDER_ID = '13eejhj78QAAkddLleOQQe0yYd4IuHYFu';
+
+/** Author (people column) set on every assembled Newsletter item. */
+export const NEWSLETTER_AUTHOR_EMAIL = 'tommy@takeoffmonkey.com';

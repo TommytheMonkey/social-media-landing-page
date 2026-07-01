@@ -27,6 +27,10 @@ export const cv = {
   link(url: string, text?: string) {
     return { url, text: text ?? url };
   },
+  /** people column — set to a single Monday user id. */
+  person(userId: string | number) {
+    return { personsAndTeams: [{ id: Number(userId), kind: 'person' }] };
+  },
   /** checkbox column. Monday wants the string "true"; uncheck by setting null. */
   checkbox(checked: boolean) {
     return checked ? { checked: 'true' } : null;

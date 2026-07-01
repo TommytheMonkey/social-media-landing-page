@@ -19,6 +19,7 @@ export const READ_COLUMN_IDS: string[] = [
   COLUMNS.contentText,
   COLUMNS.contentImage,
   COLUMNS.attachment,
+  COLUMNS.downloadLink,
   COLUMNS.contentFolder,
   COLUMNS.postCheckbox,
   COLUMNS.newsletterCheckbox,
@@ -113,6 +114,7 @@ export function parseItem(raw: RawItem): MondayItem {
     newsletterUsed: parseCheckbox(cols, COLUMNS.newsletterCheckbox),
     useMyCopy: parseCheckbox(cols, COLUMNS.useMyCopy),
     attachmentAssetIds: parseFilesFrom(cols, COLUMNS.attachment),
+    downloadLink: parseLink(cols, COLUMNS.downloadLink),
     bufferPostId: text(cols, COLUMNS.bufferPostId),
   };
 }

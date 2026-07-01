@@ -360,8 +360,8 @@ export async function deleteCalendarEvent(eventId: string): Promise<void> {
   }
 }
 
-/** Upload image bytes into a Drive folder. Returns the file ref. */
-export async function uploadImage(
+/** Upload arbitrary file bytes into a Drive folder. Returns the file ref. */
+export async function uploadFile(
   folderId: string,
   name: string,
   bytes: Buffer,
@@ -376,4 +376,98 @@ export async function uploadImage(
   });
   const id = created.data.id!;
   return { id, webViewLink: created.data.webViewLink ?? `https://drive.google.com/file/d/${id}/view` };
+}
+
+/** Upload image bytes into a Drive folder. Returns the file ref. */
+export async function uploadImage(
+  folderId: string,
+  name: string,
+  bytes: Buffer,
+  contentType: string,
+): Promise<DriveRef> {
+  return uploadFile(folderId, name, bytes, contentType);
+}
+
+export interface DriveChild {
+  id: string;
+  name: string;
+  mimeType: string;
+}
+
+/** List direct children (files + subfolders) of a Drive folder. */
+export async function listFolderChildren(folderId: string): Promise<DriveChild[]> {
+  const d = drive();
+  const children: DriveChild[] = [];
+  let pageToken: string | undefined;
+  do {
+    const res = await d.files.list({
+      q: `'${folderId}' in parents and trashed = false`,
+      fields: 'nextPageToken, files(id, name, mimeType)',
+      pageSize: 200,
+      pageToken,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
+    for (const f of res.data.files ?? []) {
+      if (f.id && f.name && f.mimeType) children.push({ id: f.id, name: f.name, mimeType: f.mimeType });
+    }
+    pageToken = res.data.nextPageToken ?? undefined;
+  } while (pageToken);
+  return children;
+}
+
+/** Copy a single Drive file into `destFolderId` (optionally renaming). Returns the new ref. */
+export async function copyFile(fileId: string, destFolderId: string, newName?: string): Promise<DriveRef> {
+  const d = drive();
+  const created = await d.files.copy({
+    fileId,
+    requestBody: { parents: [destFolderId], ...(newName ? { name: newName } : {}) },
+    fields: 'id, webViewLink',
+    supportsAllDrives: true,
+  });
+  const id = created.data.id!;
+  return { id, webViewLink: created.data.webViewLink ?? `https://drive.google.com/file/d/${id}/view` };
+}
+
+/**
+ * Recursively copy the CONTENTS of `srcFolderId` into `destFolderId`: every file is
+ * copied, and each subfolder is recreated in the destination and recursed into.
+ * Returns the number of files copied.
+ */
+export async function copyFolderInto(srcFolderId: string, destFolderId: string): Promise<number> {
+  let copied = 0;
+  for (const child of await listFolderChildren(srcFolderId)) {
+    if (child.mimeType === FOLDER_MIME) {
+      const sub = await ensureFolder(destFolderId, child.name);
+      copied += await copyFolderInto(child.id, sub.id);
+    } else {
+      await copyFile(child.id, destFolderId);
+      copied++;
+    }
+  }
+  return copied;
+}
+
+/** Get a Drive file/folder's name, or null if it can't be read. */
+export async function getFileName(fileId: string): Promise<string | null> {
+  try {
+    const res = await drive().files.get({ fileId, fields: 'name', supportsAllDrives: true });
+    return res.data.name ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Download a Drive file's raw bytes + content type (for non-Google-native files). */
+export async function downloadFileBytes(fileId: string): Promise<{ bytes: Buffer; contentType: string }> {
+  const d = drive();
+  const meta = await d.files.get({ fileId, fields: 'mimeType', supportsAllDrives: true });
+  const res = await d.files.get(
+    { fileId, alt: 'media', supportsAllDrives: true },
+    { responseType: 'arraybuffer' },
+  );
+  return {
+    bytes: Buffer.from(res.data as ArrayBuffer),
+    contentType: meta.data.mimeType ?? 'application/octet-stream',
+  };
 }

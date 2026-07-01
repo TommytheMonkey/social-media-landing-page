@@ -29,18 +29,29 @@ export function validateForSend(item: MondayItem, requireDate: boolean): Validat
 }
 
 /**
+ * Effective character count as LinkedIn/Instagram bill it: a newline is counted as
+ * CRLF (2 chars), so N visible chars with K line breaks costs N+K. We send '\n' but
+ * the network normalizes to '\r\n' before counting — mirror that here so a post at,
+ * say, 2993 chars with 27 line breaks is correctly seen as 3020 (over LinkedIn's 3000).
+ */
+export function effectiveTextLength(text: string): number {
+  return text.length + (text.match(/\n/g)?.length ?? 0);
+}
+
+/**
  * Hard character-limit check on the RESOLVED post text. Run at send time, after the
  * Google Doc is read — that's the exact text Buffer receives — so an over-limit post
  * fails with a clear message instead of a cryptic Buffer "Invalid post" rejection.
  */
 export function validateTextLength(text: string, platform: Platform): ValidationResult {
   const limit = PLATFORM_CHAR_LIMIT[platform];
-  if (text.length > limit) {
+  const length = effectiveTextLength(text);
+  if (length > limit) {
     return {
       ok: false,
       missing: [
-        `Post is ${text.length} characters — ${platform} allows a maximum of ${limit}. ` +
-          `Shorten the copy in the Google Doc, then set Post Trigger back to "Clear!".`,
+        `Post is ${length} characters (line breaks count double on ${platform}) — the ` +
+          `maximum is ${limit}. Shorten the copy in the Google Doc, then set Post Trigger back to "Clear!".`,
       ],
     };
   }

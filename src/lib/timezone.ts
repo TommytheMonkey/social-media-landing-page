@@ -63,3 +63,15 @@ export function upcomingMonday(): string {
   if (!d) throw new Error('Could not compute the upcoming Monday');
   return d;
 }
+
+/**
+ * Date 'YYYY-MM-DD' of the Friday in the CURRENT ISO week in ET (Mon–Sun week).
+ * Names the newsletter folder ("week of {this}"), e.g. run on Wed 2026-07-01 ->
+ * '2026-07-03'. On Sat/Sun this returns that week's Friday (already passed).
+ */
+export function thisWeeksFriday(): string {
+  const now = DateTime.now().setZone(POST_TIMEZONE);
+  const d = now.plus({ days: 5 - now.weekday }).toISODate(); // luxon: Friday=5
+  if (!d) throw new Error('Could not compute this week\'s Friday');
+  return d;
+}

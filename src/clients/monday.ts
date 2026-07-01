@@ -62,6 +62,16 @@ export async function gql<T = any>(
     });
 
     const bodyText = await res.text();
+
+    // Transient server errors (500/502/503/504) — back off and retry before trying to
+    // parse the body, which on a 5xx is usually an HTML/empty error page, not JSON.
+    if (res.status >= 500 && attempt <= MAX_RETRIES) {
+      const waitMs = Math.min(2 ** attempt, 30) * 1000;
+      log.warn('monday 5xx, backing off', { attempt, status: res.status, waitMs });
+      await sleep(waitMs);
+      continue;
+    }
+
     let body: any;
     try {
       body = JSON.parse(bodyText);
@@ -268,14 +278,59 @@ export async function createItem(
   name: string,
   values: Record<string, unknown>,
   groupId?: string,
+  createLabelsIfMissing = false,
 ): Promise<string> {
   const data = await gql<{ create_item: { id: string } }>(
-    `mutation ($board: ID!, $group: String, $name: String!, $vals: JSON!) {
-       create_item(board_id: $board, group_id: $group, item_name: $name, column_values: $vals) { id }
+    `mutation ($board: ID!, $group: String, $name: String!, $vals: JSON!, $create: Boolean!) {
+       create_item(board_id: $board, group_id: $group, item_name: $name, column_values: $vals, create_labels_if_missing: $create) { id }
      }`,
-    { board: BOARD_ID, group: groupId ?? null, name, vals: JSON.stringify(values) },
+    { board: BOARD_ID, group: groupId ?? null, name, vals: JSON.stringify(values), create: createLabelsIfMissing },
   );
   return data.create_item.id;
+}
+
+/** Resolve a Monday user id by email (people-column value needs the id, not email). */
+export async function resolveUserIdByEmail(email: string): Promise<string | null> {
+  const data = await gql<{ users: Array<{ id: string; email: string }> }>(
+    `query ($emails: [String]) { users(emails: $emails) { id email } }`,
+    { emails: [email] },
+  );
+  const match = data.users?.find((u) => u.email?.toLowerCase() === email.toLowerCase()) ?? data.users?.[0];
+  return match?.id ?? null;
+}
+
+/** Fetch all items in a group (paginated), with the given columns. */
+export async function getItemsInGroup(groupId: string, columnIds: string[]): Promise<RawItem[]> {
+  const items: RawItem[] = [];
+  const first = await gql<{
+    boards: Array<{ groups: Array<{ items_page: { cursor: string | null; items: RawItem[] } }> }>;
+  }>(
+    `query ($board: [ID!], $group: [String], $cols: [String!]) {
+       boards(ids: $board) {
+         groups(ids: $group) {
+           items_page(limit: 100) { cursor items { ${ITEM_FIELDS} } }
+         }
+       }
+     }`,
+    { board: [BOARD_ID], group: [groupId], cols: columnIds },
+  );
+  const firstPage = first.boards?.[0]?.groups?.[0]?.items_page;
+  let cursor: string | null = null;
+  if (firstPage) {
+    items.push(...firstPage.items);
+    cursor = firstPage.cursor;
+  }
+  while (cursor) {
+    const next: { next_items_page: { cursor: string | null; items: RawItem[] } } = await gql(
+      `query ($cols: [String!], $cursor: String!) {
+         next_items_page(limit: 100, cursor: $cursor) { cursor items { ${ITEM_FIELDS} } }
+       }`,
+      { cols: columnIds, cursor },
+    );
+    items.push(...next.next_items_page.items);
+    cursor = next.next_items_page.cursor;
+  }
+  return items;
 }
 
 /** Read a page of an item's updates (comments), newest first. */

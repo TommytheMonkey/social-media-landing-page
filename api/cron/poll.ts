@@ -10,6 +10,8 @@ import { pollAndPostNow } from '../../src/flows/postNow';
 import { pollAndCancel } from '../../src/flows/cancelPost';
 import { pollAndSyncSchedule } from '../../src/flows/syncSchedule';
 import { pollAndReconcilePublished } from '../../src/flows/reconcilePublished';
+import { pollAndCreateNewsletter } from '../../src/flows/newsletter';
+import { pollNewsletterPrep } from '../../src/flows/newsletterFinalize';
 import { log } from '../../src/lib/logger';
 
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
@@ -19,6 +21,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
   }
   try {
     const created = await pollAndCreate(); // Flow 1
+    // Flow 5 — newsletter assembly: gather all "Create Newsletter!" posts into one
+    // Newsletter Prep item + Drive folder (every poll, not just Fridays).
+    const newsletter = await pollAndCreateNewsletter();
     const cancelled = await pollAndCancel(); // Flow 5
     // Flow 9 BEFORE Flow 2: reschedule the already-Scheduled! set (moved Post Dates).
     // Running it first means a post Flow 2 schedules in THIS cycle isn't also seen by
@@ -28,7 +33,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
     const scheduled = await pollAndSchedule(); // Flow 2
     const posted = await pollAndPostNow(); // Flow 3
     const reconciled = await pollAndReconcilePublished(); // Flow 8 (Scheduled! -> Live!/Error)
-    res.status(200).json({ ok: true, created, cancelled, resynced, scheduled, posted, reconciled });
+    // Flow 5b — newsletter prep scan: attachment -> download link, and Clear! -> HTML.
+    const newsletterPrep = await pollNewsletterPrep();
+    res.status(200).json({ ok: true, created, newsletter, cancelled, resynced, scheduled, posted, reconciled, newsletterPrep });
   } catch (err) {
     log.error('poll endpoint failed', { error: err instanceof Error ? err.message : String(err) });
     res.status(500).json({ ok: false, error: err instanceof Error ? err.message : String(err) });

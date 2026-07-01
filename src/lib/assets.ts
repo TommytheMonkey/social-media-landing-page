@@ -26,6 +26,15 @@ export function loadAssetText(relPath: string): string {
   return loadAsset(relPath).toString('utf8');
 }
 
+/** Like loadAsset but returns null instead of throwing when absent. */
+export function tryLoadAsset(relPath: string): Buffer | null {
+  try {
+    return loadAsset(relPath);
+  } catch {
+    return null;
+  }
+}
+
 /** Like loadAssetText but returns null instead of throwing when absent. */
 export function tryLoadAssetText(relPath: string): string | null {
   try {

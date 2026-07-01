@@ -23,10 +23,6 @@
       "schedule": "7 5 * * *"
     },
     {
-      "path": "/api/cron/newsletter",
-      "schedule": "12 5 * * 5"
-    },
-    {
       "path": "/api/cron/metrics",
       "schedule": "8 11 * * *"
     },
