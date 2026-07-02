@@ -10,22 +10,20 @@
 import type { Platform, Voice } from '../types';
 
 export const CHANNEL_MAP: Record<Voice, Partial<Record<Platform, string>>> = {
-  // Tommy Lather — personal LinkedIn
-  Tommy: { LinkedIn: '6a3bea455ab6d2f10668b3f3' },
+  // Tommy Lather — personal LinkedIn; IG cross-posts go to the brand account
+  Tommy: { LinkedIn: '6a3bea455ab6d2f10668b3f3', Instagram: '6a3d7d945ab6d2f106707fc2' },
   // Takeoff Monkey, LLC — company LinkedIn + brand Instagram (@takeoffmonkey)
   'Takeoff Monkey': { LinkedIn: '6a3bea455ab6d2f10668b3f7', Instagram: '6a3d7d945ab6d2f106707fc2' },
   // No Heidi channel connected in Buffer yet
   Heidi: {},
   TBD: {},
   // TOM-flavored personal voice -> Tommy's LinkedIn (change to the company id if preferred)
-  'Tommy + TOM': { LinkedIn: '6a3bea455ab6d2f10668b3f3' },
+  'Tommy + TOM': { LinkedIn: '6a3bea455ab6d2f10668b3f3', Instagram: '6a3d7d945ab6d2f106707fc2' },
   'Heidi + TOM': {},
   Other: {},
   // NOTE: only ONE Instagram account is connected in Buffer — the brand
-  // @takeoffmonkey (mapped to the Takeoff Monkey voice above). There is no
-  // personal (Tommy) or Heidi IG account, so personal-voice items on Instagram
-  // are still unmapped on purpose. If personal-voice IG posts should route to
-  // the brand IG, add `Instagram: '6a3d7d945ab6d2f106707fc2'` to those voices.
+  // @takeoffmonkey. Tommy-flavored voices route their IG posts there too (no
+  // personal IG account exists). Heidi voices stay unmapped on purpose.
 };
 
 /**
