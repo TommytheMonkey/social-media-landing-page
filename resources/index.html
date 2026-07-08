@@ -404,10 +404,21 @@
       cheatsheet: "Cheat Sheets"
     };
 
-    // Each resource. PDFs live in Vercel Blob under content-engine/downloads/
-    // (served at /downloads/<file> via the vercel.json rewrite). To add one:
-    // upload the PDF to that blob folder, then drop a new object in here.
+    // Each resource. Files live either in this repo's downloads/ folder (served
+    // as static files — the filesystem wins over rewrites) or in Vercel Blob under
+    // content-engine/downloads/ (served via the vercel.json rewrite). Either way
+    // the public URL is /downloads/<file>. To add one: drop the file in place,
+    // then add a new object here.
     const RESOURCES = [
+      {
+        type:"guide",
+        fresh:true,
+        title:"Chat With Your Project Files",
+        meta:"Install kit · ZIP",
+        blurb:"Give every PM a private ChatGPT for a project's specs & drawings. The n8n workflow plus the 30-minute, no-code install guide.",
+        cta:"Get the kit",
+        url:"/downloads/chat-with-your-project-files.zip"
+      },
       {
         type:"guide",
         title:"The Contractor's Field Guide to Automation",
@@ -418,7 +429,6 @@
       },
       {
         type:"guide",
-        fresh:true,
         title:"The Ultimate Guide to Claude for Contractors",
         meta:"Field guide · PDF",
         blurb:"How to actually put Claude to work in an estimating shop — the prompts, workflows, and guardrails that keep it useful.",
