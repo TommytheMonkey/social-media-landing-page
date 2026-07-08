@@ -195,6 +195,8 @@ Already flipped a post to **Scheduled!** but need it to go out on a different da
 
 > Reschedule sync + the calendar mirror require the **Google Calendar** integration to be turned on (a one-time `GOOGLE_CALENDAR_ID` setup). If it's off, changing a Post Date after scheduling has **no effect** in Buffer — you'd cancel and re-clear instead.
 
+For the full protocol — including what *not* to do in Buffer and the timing cutoffs — see [RESCHEDULING.md](RESCHEDULING.md).
+
 ---
 
 ## Google Calendar of everything scheduled
