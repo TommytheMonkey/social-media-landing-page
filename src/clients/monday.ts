@@ -97,6 +97,21 @@ export async function gql<T = any>(
       continue;
     }
 
+    // Monday sometimes wraps an internal failure in an HTTP 200 whose GraphQL errors
+    // array is just "Internal Server Error" — same transient class as an HTTP 5xx,
+    // so it gets the same backoff instead of failing the flow on the first hit.
+    const isInternalError = (errors ?? []).some(
+      (e) =>
+        /internal server error/i.test(e.message ?? '') ||
+        e.extensions?.code === 'INTERNAL_SERVER_ERROR',
+    );
+    if (isInternalError && attempt <= MAX_RETRIES) {
+      const waitMs = Math.min(2 ** attempt, 30) * 1000;
+      log.warn('monday internal error in 200 body, backing off', { attempt, waitMs });
+      await sleep(waitMs);
+      continue;
+    }
+
     if (!res.ok) {
       throw new Error(`Monday HTTP ${res.status}: ${bodyText.slice(0, 800)}`);
     }

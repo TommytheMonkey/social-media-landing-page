@@ -43,7 +43,7 @@ export type SyncOutcome =
   | 'skippedNonSocial' // Newsletter/Blog never reach Buffer/the calendar.
   | 'skippedMoved' // Status left Scheduled! mid-run -> bail (don't race cancel/poll).
   | 'undeletable' // Old Buffer post couldn't be removed -> NOT recreated (avoid a dup).
-  | 'readError'; // Buffer status read failed -> skip; try again next poll.
+  | 'readError'; // A Monday marker or Buffer status read failed -> skip; try again next poll.
 
 export interface SyncSummary {
   /** True when the mirror isn't configured, so the flow did nothing. */
@@ -79,13 +79,32 @@ export async function syncScheduleItem(item: MondayItem): Promise<SyncOutcome> {
   }
 
   const desiredDueAt = scheduledUtcISO(item.postDate);
-  const rec = await findCalendarSync(item.id);
+
+  // The marker scans below are pure Monday reads. A read hiccup must NOT bubble up
+  // to reportError — that flips the item to Error and yanks a perfectly healthy
+  // scheduled post out of the queue. Log + skip; the next poll retries (same rule
+  // as the Buffer status read further down).
+  const rec = await findCalendarSync(item.id).catch((err) => {
+    log.warn('Flow 9: calendar-marker read failed — skipping item until next poll', {
+      itemId: item.id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return false as const;
+  });
+  if (rec === false) return 'readError';
 
   // No marker yet -> backfill the mirror at the current schedule. We have no prior
   // instant to compare against, so we DON'T touch Buffer (it may or may not match);
   // once the marker exists, a later date edit is detected normally.
   if (!rec) {
-    const postId = await findBufferPostId(item.id, item.bufferPostId);
+    const postId = await findBufferPostId(item.id, item.bufferPostId).catch((err) => {
+      log.warn('Flow 9: Buffer-marker read failed — skipping item until next poll', {
+        itemId: item.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      return false as const;
+    });
+    if (postId === false) return 'readError';
     await mirrorCreateForItem(item, desiredDueAt, postId);
     return 'backfilled';
   }
@@ -94,7 +113,14 @@ export async function syncScheduleItem(item: MondayItem): Promise<SyncOutcome> {
   if (sameInstant(rec.dueAtUtc, desiredDueAt)) return 'inSync';
 
   // --- The Post Date moved. Reschedule. ---
-  const postId = await findBufferPostId(item.id, item.bufferPostId);
+  const postId = await findBufferPostId(item.id, item.bufferPostId).catch((err) => {
+    log.warn('Flow 9: Buffer-marker read failed — skipping item until next poll', {
+      itemId: item.id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    return false as const;
+  });
+  if (postId === false) return 'readError';
   if (!postId) {
     // Mirror exists but we can't find the Buffer post — just move the calendar event
     // to match Monday (the source of truth) and re-baseline.
